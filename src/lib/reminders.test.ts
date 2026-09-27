@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isoDate } from "./dates";
 import { pesos } from "./money";
-import { planReminders, renderTemplate, smsHref, smsPeso, smsSegments, type DriverFacts, type RuleConfig } from "./reminders";
+import { isQuietTime, planReminders, renderTemplate, smsHref, smsPeso, smsSegments, type DriverFacts, type RuleConfig } from "./reminders";
 
 const rules: RuleConfig[] = [
   { trigger: "balance_weekly", active: true, weekday: 1, offsetDays: null, minAmount: BigInt(100) },
@@ -89,5 +89,30 @@ describe("planReminders", () => {
 
   it("inactive rules produce nothing", () => {
     expect(planReminders(rules.map((r) => ({ ...r, active: false })), facts(), isoDate("2026-09-28"))).toEqual([]);
+  });
+});
+
+describe("isQuietTime", () => {
+  const q = { start: "21:00", end: "07:00" };
+  // Manila is UTC+8 with no DST.
+  const at = (manila: string) => new Date(`2026-10-05T${manila}:00+08:00`);
+  it("wraps past midnight", () => {
+    expect(isQuietTime(at("20:59"), q)).toBe(false);
+    expect(isQuietTime(at("21:00"), q)).toBe(true);
+    expect(isQuietTime(at("23:30"), q)).toBe(true);
+    expect(isQuietTime(at("00:00"), q)).toBe(true);
+    expect(isQuietTime(at("06:59"), q)).toBe(true);
+    expect(isQuietTime(at("07:00"), q)).toBe(false);
+    expect(isQuietTime(at("12:00"), q)).toBe(false);
+  });
+  it("uses Manila time, not UTC", () => {
+    // 22:00 UTC = 06:00 Manila next day (quiet); 02:00 UTC = 10:00 Manila (not quiet).
+    expect(isQuietTime(new Date("2026-10-05T22:00:00Z"), q)).toBe(true);
+    expect(isQuietTime(new Date("2026-10-05T02:00:00Z"), q)).toBe(false);
+  });
+  it("supports a same-day window and an empty window", () => {
+    expect(isQuietTime(at("13:00"), { start: "12:00", end: "14:00" })).toBe(true);
+    expect(isQuietTime(at("14:00"), { start: "12:00", end: "14:00" })).toBe(false);
+    expect(isQuietTime(at("03:00"), { start: "00:00", end: "00:00" })).toBe(false);
   });
 });

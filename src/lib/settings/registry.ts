@@ -127,6 +127,34 @@ export const settingsRegistry = {
     group: "Messaging",
     schema: z.string().min(1).max(11).nullable(),
   },
+  "portal.max_pending_proofs": {
+    label: "Max payment proofs a driver can have waiting for verification",
+    group: "Collections",
+    schema: z.number().int().min(1).max(50),
+  },
+  "alerts.consecutive_unpaid_days": {
+    label: "Flag drivers with this many unpaid boundary days in a row",
+    group: "Alerts",
+    schema: z.number().int().min(1).max(365),
+  },
+  "alerts.balance_threshold_centavos": {
+    label: "Flag drivers whose total balance reaches (centavos)",
+    group: "Alerts",
+    schema: z.number().int().min(0),
+  },
+  "alerts.license_expiry_days": {
+    label: "Flag licences expiring within (days)",
+    group: "Alerts",
+    schema: z.number().int().min(0).max(365),
+  },
+  "reminders.quiet_hours": {
+    label: "No reminders between (Manila time)",
+    group: "Messaging",
+    schema: z.object({
+      start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+      end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    }),
+  },
 } as const satisfies Record<
   string,
   { label: string; group: string; readOnly?: boolean; schema: z.ZodType }

@@ -14,7 +14,9 @@ import { formObject, guarded, type ActionState } from "@/server/action";
 import { uploadDocument } from "@/server/documents";
 import { runDailyCharges } from "@/server/money/charges";
 import { friendlyError, MoneyRuleError } from "@/server/money/errors";
+import { closeDay } from "@/server/money/day-close";
 import { createRemittance, recordPayment, voidPayment } from "@/server/money/payments";
+import { approveProof, rejectProof } from "@/server/money/proofs";
 
 const STAFF_COLLECT = ["owner_admin", "finance", "operations"] as const;
 
@@ -187,5 +189,44 @@ export async function removeHolidayAction(_: ActionState, formData: FormData): P
     await withUserTx(s.claims, (tx) => tx.delete(holidays).where(eq(holidays.date, date)));
     revalidatePath("/app/admin/holidays");
     return "Holiday removed.";
+  });
+}
+
+/** Finance verifies a driver's payment proof, splitting it across the driver's accounts. */
+export async function approveProofAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const obj = formObject(formData);
+  return guarded(["owner_admin", "finance"], async (s) => {
+    const proofId = z.guid().parse(obj.proofId);
+    const lines: { accountId: string; amount: bigint }[] = [];
+    for (const [k, v] of Object.entries(obj)) {
+      if (!k.startsWith("amount:")) continue;
+      const parsed = zPesoOrZero.safeParse(v);
+      if (!parsed.success) throw new MoneyRuleError(parsed.error.issues[0].message);
+      if (parsed.data !== BigInt(0)) lines.push({ accountId: z.guid().parse(k.slice(7)), amount: parsed.data });
+    }
+    const r = await withUserTx(s.claims, (tx) => approveProof(tx, { proofId, lines, decidedBy: s.userId }));
+    revalidatePath("/app/collections/proofs");
+    return `Verified. Payment ${r.receiptNo} recorded.`;
+  });
+}
+
+export async function rejectProofAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const obj = formObject(formData);
+  return guarded(["owner_admin", "finance"], async (s) => {
+    const input = z.object({ proofId: z.guid(), reason: z.string().trim().min(3, "Give the driver a reason").max(300) }).safeParse(obj);
+    if (!input.success) throw new MoneyRuleError(input.error.issues[0].message);
+    await withUserTx(s.claims, (tx) => rejectProof(tx, { ...input.data, decidedBy: s.userId }));
+    revalidatePath("/app/collections/proofs");
+    return "Proof rejected. The driver sees your reason in the portal.";
+  });
+}
+
+export async function closeDayAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const obj = formObject(formData);
+  return guarded(["owner_admin", "finance"], async (s) => {
+    const input = z.object({ date: zIsoDate, notes: z.string().trim().max(500).default("") }).parse(obj);
+    await withUserTx(s.claims, (tx) => closeDay(tx, { ...input, today: businessToday(), closedBy: s.userId }));
+    revalidatePath("/app/collections/close");
+    return `${input.date} closed.`;
   });
 }

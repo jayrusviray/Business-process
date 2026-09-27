@@ -9,7 +9,11 @@ import { franchises, vehicles } from "@/db/schema";
 import { requireRole } from "@/lib/auth/session";
 import { zIsoDate, zPesoOrZero } from "@/lib/validation";
 import { formObject, guarded, type ActionState } from "@/server/action";
-import { friendlyError } from "@/server/money/errors";
+import { hasAnyRole } from "@/lib/auth/roles";
+import { businessToday } from "@/lib/dates";
+import { uploadDocument } from "@/server/documents";
+import { friendlyError, MoneyRuleError } from "@/server/money/errors";
+import { recordMaintenance, voidMaintenance } from "@/server/money/maintenance";
 
 const VehicleInput = z.object({
   plateNo: z.string().trim().min(2, "Plate number is required").max(20).transform((s) => s.toUpperCase()),
@@ -72,5 +76,50 @@ export async function addFranchise(_: ActionState, formData: FormData): Promise<
     await withUserTx(s.claims, (tx) => tx.insert(franchises).values(input));
     revalidatePath(`/app/vehicles/${input.vehicleId}`);
     return "Franchise added.";
+  });
+}
+
+const MaintenanceInput = z.object({
+  vehicleId: z.guid(),
+  serviceDate: zIsoDate,
+  description: z.string().trim().min(2, "Describe the work done").max(200),
+  shop: z.string().trim().max(120).default(""),
+  odometerKm: z.union([z.literal(""), z.coerce.number().int().min(0).max(5_000_000)]).transform((v) => (v === "" ? null : v)),
+  cost: zPesoOrZero,
+  bookExpense: z.string().optional().transform((v) => v === "on"),
+  chargeDriverId: z.union([z.literal(""), z.guid()]).transform((v) => v || null),
+});
+
+/** Logs a service/repair; optionally books the expense and charges the driver at cost. */
+export async function addMaintenanceAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const obj = formObject(formData);
+  return guarded(["owner_admin", "finance", "operations"], async (s) => {
+    const parsed = MaintenanceInput.safeParse(obj);
+    if (!parsed.success) throw new MoneyRuleError(parsed.error.issues[0]?.message ?? "Check the form.");
+    const m = parsed.data;
+    if (m.bookExpense && !hasAnyRole(s.roles, ["owner_admin", "finance"])) {
+      throw new MoneyRuleError("Only owner/admin and finance can book company expenses. Untick it, or ask finance.");
+    }
+    const file = formData.get("receipt");
+    await withUserTx(s.claims, async (tx) => {
+      const receiptDocumentId =
+        file instanceof File && file.size > 0
+          ? await uploadDocument(tx, { file, ownerType: "vehicle", ownerId: m.vehicleId, docType: "maintenance_receipt", uploadedBy: s.userId })
+          : null;
+      await recordMaintenance(tx, { ...m, receiptDocumentId, today: businessToday() });
+    });
+    revalidatePath(`/app/vehicles/${m.vehicleId}`);
+    return m.chargeDriverId ? "Maintenance logged and charged to the driver." : "Maintenance logged.";
+  });
+}
+
+export async function voidMaintenanceAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const obj = formObject(formData);
+  return guarded(["owner_admin", "finance"], async (s) => {
+    const input = z.object({ id: z.guid(), vehicleId: z.guid(), reason: z.string().trim().min(3, "Give a reason").max(300) }).safeParse(obj);
+    if (!input.success) throw new MoneyRuleError(input.error.issues[0].message);
+    await withUserTx(s.claims, (tx) => voidMaintenance(tx, { id: input.data.id, reason: input.data.reason, userId: s.userId, today: businessToday() }));
+    revalidatePath(`/app/vehicles/${input.data.vehicleId}`);
+    return "Voided. The expense and the driver charge were reversed.";
   });
 }

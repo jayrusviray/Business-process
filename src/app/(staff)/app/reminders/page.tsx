@@ -13,9 +13,11 @@ import { messageOptOuts, messageTemplates, reminderRules } from "@/db/schema";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { toDecimalString } from "@/lib/money";
-import { TEMPLATE_VARIABLES, TRIGGER_LABEL, type Trigger } from "@/lib/reminders";
+import { isQuietTime, TEMPLATE_VARIABLES, TRIGGER_LABEL, type Trigger } from "@/lib/reminders";
+import { settingsRegistry } from "@/lib/settings/registry";
 import { cn } from "@/lib/utils";
 import { listActiveDriversForPicker } from "@/server/queries/drivers";
+import { rawSetting } from "@/server/queries/settings";
 import { listOutbox } from "@/server/reminders";
 import {
   addOptOutAction,
@@ -76,10 +78,22 @@ export default async function RemindersPage({ searchParams }: PageProps<"/app/re
 type Claims = Parameters<typeof withUserTx>[0];
 
 async function Outbox({ claims }: { claims: Claims }) {
-  const { items, drivers } = await withUserTx(claims, async (tx) => ({ items: await listOutbox(tx), drivers: await listActiveDriversForPicker(tx) }));
+  const { items, drivers, quietRaw } = await withUserTx(claims, async (tx) => ({
+    items: await listOutbox(tx),
+    drivers: await listActiveDriversForPicker(tx),
+    quietRaw: await rawSetting(tx, "reminders.quiet_hours"),
+  }));
+  const quietHours = settingsRegistry["reminders.quiet_hours"].schema.safeParse(quietRaw);
+  const q = quietHours.success ? quietHours.data : { start: "21:00", end: "07:00" };
+  const quiet = isQuietTime(new Date(), q);
   return (
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
       <div className="flex flex-col gap-3">
+        {quiet && items.length > 0 ? (
+          <p role="status" className="rounded-md bg-warning/15 p-3 text-sm">
+            Quiet hours ({q.start}–{q.end}): please send these after {q.end}. Drivers shouldn&apos;t get reminders at night.
+          </p>
+        ) : null}
         {items.length === 0 ? (
           <Card><CardContent className="pt-5 text-sm text-muted-foreground">Nothing to send. 🎉</CardContent></Card>
         ) : null}
@@ -95,7 +109,7 @@ async function Outbox({ claims }: { claims: Claims }) {
               </div>
               <p className="whitespace-pre-wrap rounded-md bg-muted p-3 text-sm">{m.body}</p>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <OutboxSend phone={m.to_phone} body={m.body} />
+                <OutboxSend phone={m.to_phone} body={m.body} quiet={quiet} />
                 <div className="flex gap-2">
                   <ActionForm action={markMessageAction} inlineStatus>
                     <input type="hidden" name="id" value={m.id} />

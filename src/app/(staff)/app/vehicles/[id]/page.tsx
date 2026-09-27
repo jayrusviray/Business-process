@@ -11,12 +11,12 @@ import { Money } from "@/components/money";
 import { Input, Select } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/table";
 import { withUserTx } from "@/db/client";
-import { drivers, franchises, vehicleAssignments, vehicles } from "@/db/schema";
+import { drivers, franchises, vehicleAssignments, vehicleMaintenance, vehicles } from "@/db/schema";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { businessToday } from "@/lib/dates";
 import { vehicleProfitability } from "@/server/queries/profitability";
-import { addFranchise, updateVehicle } from "../actions";
+import { addFranchise, addMaintenanceAction, updateVehicle, voidMaintenanceAction } from "../actions";
 import { VehicleForm } from "../vehicle-form";
 
 export const metadata = { title: "Vehicle" };
@@ -38,10 +38,18 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
       .orderBy(desc(vehicleAssignments.startDate));
     const fr = await tx.select().from(franchises).where(eq(franchises.vehicleId, id)).orderBy(desc(franchises.expiresOn));
     const profit = canSeeProfit ? await vehicleProfitability(tx, id, businessToday()) : [];
-    return { vehicle, history, fr, profit };
+    const maintenance = await tx
+      .select({ m: vehicleMaintenance, firstName: drivers.firstName, lastName: drivers.lastName })
+      .from(vehicleMaintenance)
+      .leftJoin(drivers, eq(drivers.id, vehicleMaintenance.driverId))
+      .where(eq(vehicleMaintenance.vehicleId, id))
+      .orderBy(desc(vehicleMaintenance.serviceDate), desc(vehicleMaintenance.createdAt));
+    return { vehicle, history, fr, profit, maintenance };
   });
   if (!data) notFound();
-  const { vehicle, history, fr, profit } = data;
+  const { vehicle, history, fr, profit, maintenance } = data;
+  const today = businessToday();
+  const current = history.find((h) => h.a.endDate === null);
 
   return (
     <>
@@ -180,6 +188,89 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
           </Table>
         </Card>
       ) : null}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Maintenance log</CardTitle>
+          <CardDescription>Services and repairs. Drivers bear costs at cost (owner rule), so a repair can be charged to the driver in the same step.</CardDescription>
+        </CardHeader>
+        <Table>
+          <thead>
+            <tr>
+              <Th>Date</Th>
+              <Th>Work done</Th>
+              <Th>Odometer</Th>
+              <Th>Charged to</Th>
+              <Th className="text-right">Cost</Th>
+              <Th />
+            </tr>
+          </thead>
+          <tbody>
+            {maintenance.length === 0 ? (
+              <tr><Td colSpan={6} className="text-muted-foreground">No maintenance recorded.</Td></tr>
+            ) : null}
+            {maintenance.map(({ m, firstName, lastName }) => (
+              <tr key={m.id} className={m.voidedAt ? "text-muted-foreground" : ""}>
+                <Td>{m.serviceDate}</Td>
+                <Td>
+                  {m.description}
+                  {m.shop ? <span className="block text-xs text-muted-foreground">{m.shop}</span> : null}
+                  {m.receiptDocumentId ? <a className="text-xs underline" href={`/app/documents/${m.receiptDocumentId}`} target="_blank">receipt</a> : null}
+                  {m.expenseId ? <Badge variant="muted" className="ml-1">expense</Badge> : null}
+                  {m.voidedAt ? <span className="block text-xs text-destructive">Void: {m.voidReason}</span> : null}
+                </Td>
+                <Td>{m.odometerKm !== null ? `${m.odometerKm.toLocaleString("en-PH")} km` : "—"}</Td>
+                <Td>{m.driverId ? <Link href={`/app/drivers/${m.driverId}`} className="underline">{lastName}, {firstName}</Link> : "—"}</Td>
+                <Td className="text-right"><Money value={m.costCentavos} className={m.voidedAt ? "line-through" : ""} /></Td>
+                <Td>
+                  {canSeeProfit && !m.voidedAt ? (
+                    <details>
+                      <summary className="cursor-pointer text-xs text-destructive">Void</summary>
+                      <ActionForm action={voidMaintenanceAction} className="mt-1 flex gap-1">
+                        <input type="hidden" name="id" value={m.id} />
+                        <input type="hidden" name="vehicleId" value={vehicle.id} />
+                        <Input name="reason" placeholder="Reason" required className="h-8" />
+                        <Button type="submit" size="sm" variant="destructive">Void</Button>
+                      </ActionForm>
+                    </details>
+                  ) : null}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+        <CardContent className="pt-4">
+          <details>
+            <summary className="cursor-pointer text-sm font-medium">Log maintenance</summary>
+            <ActionForm action={addMaintenanceAction} className="mt-3 grid gap-3 sm:grid-cols-2">
+              <input type="hidden" name="vehicleId" value={vehicle.id} />
+              <Field label="Date" htmlFor="m-date"><Input id="m-date" name="serviceDate" type="date" defaultValue={today} max={today} required /></Field>
+              <Field label="Cost (₱)" htmlFor="m-cost"><Input id="m-cost" name="cost" inputMode="decimal" placeholder="0.00" /></Field>
+              <Field label="Work done" htmlFor="m-desc" className="sm:col-span-2"><Input id="m-desc" name="description" required placeholder="e.g. Change oil + filter" /></Field>
+              <Field label="Shop" htmlFor="m-shop"><Input id="m-shop" name="shop" /></Field>
+              <Field label="Odometer (km)" htmlFor="m-odo"><Input id="m-odo" name="odometerKm" inputMode="numeric" /></Field>
+              <Field label="Charge to driver at cost" htmlFor="m-driver">
+                <Select id="m-driver" name="chargeDriverId" defaultValue={current?.a.driverId ?? ""}>
+                  <option value="">Don&apos;t charge a driver</option>
+                  {history
+                    .filter((h, i, all) => all.findIndex((x) => x.a.driverId === h.a.driverId) === i)
+                    .map((h) => (
+                      <option key={h.a.driverId} value={h.a.driverId}>
+                        {h.lastName}, {h.firstName}{h.a.endDate === null ? " (current)" : ""}
+                      </option>
+                    ))}
+                </Select>
+              </Field>
+              <Field label="Receipt photo (optional)" htmlFor="m-receipt"><Input id="m-receipt" name="receipt" type="file" accept="image/*,application/pdf" /></Field>
+              {canSeeProfit ? (
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                  <input type="checkbox" name="bookExpense" className="size-5" /> The company paid the shop: also record it as a &ldquo;Vehicle maintenance&rdquo; expense
+                </label>
+              ) : null}
+              <Button type="submit" className="sm:col-span-2">Save</Button>
+            </ActionForm>
+          </details>
+        </CardContent>
+      </Card>
       {canEdit ? (
         <details>
           <summary className="cursor-pointer text-sm font-medium">Edit vehicle</summary>

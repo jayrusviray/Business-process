@@ -173,15 +173,17 @@ describe("settings", () => {
 
 describe("documents", () => {
   it("sales only see application documents; drivers see none (until Phase 2 adds self-access)", async () => {
+    // Other test files add documents to the same database, so look only at the two rows created here.
+    const paths = [`d/${crypto.randomUUID()}`, `a/${crypto.randomUUID()}`];
     await sql`
       INSERT INTO public.documents (owner_type, owner_id, doc_type, storage_path, file_name, mime_type, size_bytes)
-      VALUES ('driver', gen_random_uuid(), 'drivers_license', ${`d/${crypto.randomUUID()}`}, 'lic.jpg', 'image/jpeg', 10),
-             ('application', gen_random_uuid(), 'gov_id', ${`a/${crypto.randomUUID()}`}, 'id.jpg', 'image/jpeg', 10)`;
-    const s = await asUser(sales, (tx) => tx`SELECT owner_type FROM public.documents`);
+      VALUES ('driver', gen_random_uuid(), 'drivers_license', ${paths[0]}, 'lic.jpg', 'image/jpeg', 10),
+             ('application', gen_random_uuid(), 'gov_id', ${paths[1]}, 'id.jpg', 'image/jpeg', 10)`;
+    const s = await asUser(sales, (tx) => tx`SELECT owner_type FROM public.documents WHERE storage_path IN ${sql(paths)}`);
     expect(s.map((r) => r.owner_type)).toEqual(["application"]);
-    const o = await asUser(ops, (tx) => tx`SELECT owner_type FROM public.documents`);
+    const o = await asUser(ops, (tx) => tx`SELECT owner_type FROM public.documents WHERE storage_path IN ${sql(paths)}`);
     expect(o.length).toBe(2);
-    const d = await asUser(driver, (tx) => tx`SELECT owner_type FROM public.documents`);
+    const d = await asUser(driver, (tx) => tx`SELECT owner_type FROM public.documents WHERE storage_path IN ${sql(paths)}`);
     expect(d.length).toBe(0);
   });
 

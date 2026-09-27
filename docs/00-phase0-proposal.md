@@ -353,3 +353,25 @@ The owner asked (2026-09-27) to use **Philippine Labor Code defaults, with every
 - **Record corrections:** expenses, cash advances and commissions received can only be voided, never edited or deleted.
 - **Self-service views:** staff linked to a login see their own finalized payslips on the dashboard. Investors see their vehicles and monthly shares in the portal.
 - **Commissions received** (from platforms or dealers) are recorded one by one, since what platforms and dealers pay for isn't specified yet.
+
+## 14. Spec gap closing (M-A)
+
+These are items from the full spec (`/mvp` brief, 2026-09-27) that phases 1–6 didn't cover:
+
+- **Payment proofs from the portal.** A driver uploads a GCash, Maya or bank screenshot with the amount, reference number and date paid. Nothing is posted until finance verifies it.
+  - Finance splits the amount across the driver's accounts. The split must equal the claimed amount; if the amount is wrong, finance rejects the proof with a reason the driver sees.
+  - Approval records a normal payment dated the day the driver paid, with the proof as the attached receipt. The proof id is the payment's idempotency key.
+  - Operations can see the queue but can't decide. A driver can have at most `portal.max_pending_proofs` proofs waiting.
+- **Acknowledgement receipt PDF.** For staff at `/app/collections/receipts/[id]/pdf`, and for drivers from the portal (their own only, enforced by RLS).
+- **Collect today (collector mode).** A mobile list of every driver with anything due up to today, oldest arrears first, with one tap to record a payment.
+- **Close the day.** Shows boundary charged vs collected, then per collector: cash, non-cash, remitted and not yet remitted.
+  - Finance's close stores an immutable snapshot of that day.
+  - Payments changed after the close are flagged against the snapshot, not blocked. We didn't invent a rule to lock a closed day.
+- **Vehicle maintenance log.** Records the date, work done, shop, odometer, cost and a receipt photo.
+  - Optionally books a "Vehicle maintenance" expense (owner/admin and finance only), and optionally charges the driver at cost (owner rule).
+  - Voiding the record voids the expense and reverses the charge together.
+- **Driver platform accounts.** For example, inDrive IDs. They are unique per platform, and drivers see their own.
+- **Driver alerts on the dashboard.** Triggered by N unpaid boundary days, a balance at or over a threshold, or a licence expiring soon.
+  - Because payments apply oldest first, the unpaid boundary days are always the most recent ones, so their count is the run of consecutive unpaid days.
+- **Reminder quiet hours.** "Open SMS" is disabled between 21:00 and 07:00 Manila time (setting `reminders.quiet_hours`).
+- **Upload size.** Server actions now accept up to 9 MB. The default 1 MB rejected normal phone photos of receipts.

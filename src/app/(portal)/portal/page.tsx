@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import Link from "next/link";
 import { BoundaryCalendar, parseMonthParam } from "@/components/boundary-calendar";
 import { BonusList, DriverSummary, QuotaProgress, RtoProgressCard } from "@/components/driver-summary";
@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { withUserTx } from "@/db/client";
-import { drivers } from "@/db/schema";
+import { drivers, paymentProofs } from "@/db/schema";
 import { requireRole } from "@/lib/auth/session";
 import { businessToday, formatBusinessDate, type IsoDate } from "@/lib/dates";
 import { getDriverOverview } from "@/server/queries/driver-overview";
+import { ProofForm } from "./proof-form";
 
 export const metadata = { title: "My account" };
 
@@ -23,7 +24,16 @@ export default async function PortalPage({ searchParams }: PageProps<"/portal">)
   const month = parseMonthParam(sp.month, today);
   const o = await withUserTx(session.claims, async (tx) => {
     const [me] = await tx.select({ id: drivers.id }).from(drivers).where(eq(drivers.profileId, session.userId));
-    return me ? getDriverOverview(tx, me.id, today, month) : null;
+    if (!me) return null;
+    const overview = await getDriverOverview(tx, me.id, today, month);
+    if (!overview) return null;
+    const proofs = await tx
+      .select()
+      .from(paymentProofs)
+      .where(eq(paymentProofs.driverId, me.id))
+      .orderBy(desc(paymentProofs.submittedAt))
+      .limit(5);
+    return { ...overview, proofs };
   });
   const investor = !o && session.roles.includes("investor")
     ? await withUserTx(session.claims, async (tx) => ({
@@ -146,6 +156,36 @@ export default async function PortalPage({ searchParams }: PageProps<"/portal">)
           ) : null}
           <Card>
             <CardHeader>
+              <CardTitle>Paid via GCash, Maya or bank?</CardTitle>
+              <CardDescription>Send us the screenshot. Your balance updates once the office verifies it.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <ProofForm today={today} />
+              {o.proofs.length ? (
+                <ul className="divide-y text-sm">
+                  {o.proofs.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between gap-2 py-2">
+                      <span>
+                        {formatBusinessDate(p.paidOn as IsoDate)}
+                        <span className="block text-xs text-muted-foreground">
+                          {p.method.replace("_", " ")} · {p.referenceNo}
+                          {p.status === "rejected" && p.rejectReason ? ` · ${p.rejectReason}` : ""}
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <Money value={p.amountCentavos} />
+                        <Badge variant={p.status === "approved" ? "success" : p.status === "rejected" ? "destructive" : "warning"}>
+                          {p.status === "pending" ? "checking" : p.status}
+                        </Badge>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle>Recent payments</CardTitle>
               <CardDescription>Your last 10 payments. The statement below has the full history.</CardDescription>
             </CardHeader>
@@ -160,7 +200,12 @@ export default async function PortalPage({ searchParams }: PageProps<"/portal">)
                         {p.receiptNo} · {p.method.replace("_", " ")}
                       </span>
                     </span>
-                    {voidReason ? <Badge variant="destructive">void</Badge> : <Money value={p.amountCentavos} />}
+                    <span className="flex items-center gap-3">
+                      {voidReason ? <Badge variant="destructive">void</Badge> : <Money value={p.amountCentavos} />}
+                      <a href={`/portal/receipts/${p.id}`} target="_blank" className="py-2 text-xs underline" aria-label={`Receipt ${p.receiptNo}`}>
+                        Receipt
+                      </a>
+                    </span>
                   </li>
                 ))}
               </ul>

@@ -81,3 +81,5 @@ export const payrollStatus = pgEnum("payroll_status", ["draft", "finalized", "pa
 export const caSettlementKind = pgEnum("ca_settlement_kind", ["liquidation", "payroll_deduction", "cash_return"]);
 export const commissionStatus = pgEnum("commission_status", ["pending", "approved", "paid", "void"]);
 export const investorPayoutStatus = pgEnum("investor_payout_status", ["draft", "paid"]);
+
+export const proofStatus = pgEnum("proof_status", ["pending", "approved", "rejected"]);

@@ -1,16 +1,11 @@
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { Tx } from "@/db/client";
-import { appSettings } from "@/db/schema";
 import type { IsoDate } from "@/lib/dates";
 import { loanDueAlerts, type LoanAlert } from "@/server/money/loans";
 import { getRtoStatus } from "@/server/money/rto";
+import { numberSetting } from "./settings";
 
 export type FlaggedContract = { contractId: string; contractNo: string; driverId: string; driverName: string; missed: number };
-
-async function numberSetting(tx: Tx, key: string, fallback: number): Promise<number> {
-  const [row] = await tx.select({ value: appSettings.value }).from(appSettings).where(eq(appSettings.key, key));
-  return typeof row?.value === "number" ? row.value : fallback;
-}
 
 /** Finance alerts: loan dues soon/overdue and drivers at or over the missed-amortization flag. */
 export async function financeAlerts(tx: Tx, today: IsoDate): Promise<{ loans: LoanAlert[]; flagged: FlaggedContract[]; flagAt: number }> {
