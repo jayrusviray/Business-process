@@ -144,7 +144,7 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
           <CardHeader>
             <CardTitle>Profitability (last 12 months)</CardTitle>
             <CardDescription>
-              Collected = the paid part of each month&apos;s dues for this vehicle. Loan = payments to the lender. Operating expenses are added in Phase 6.
+              Collected = the paid part of each month&apos;s dues for this vehicle. Costs: loan payments, expenses tagged to this vehicle, and the investor share (draft or paid).
             </CardDescription>
           </CardHeader>
           <Table>
@@ -155,12 +155,14 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
                 <Th className="text-right">Boundary collected</Th>
                 <Th className="text-right">RTO collected</Th>
                 <Th className="text-right">Loan paid</Th>
+                <Th className="text-right">Expenses</Th>
+                <Th className="text-right">Investor share</Th>
                 <Th className="text-right">Net</Th>
               </tr>
             </thead>
             <tbody>
               {profit.map((m) => {
-                const net = BigInt(m.boundary_collected) + BigInt(m.amortization_collected) - BigInt(m.loan_paid);
+                const net = BigInt(m.boundary_collected) + BigInt(m.amortization_collected) - BigInt(m.loan_paid) - BigInt(m.expenses) - BigInt(m.investor_share);
                 return (
                   <tr key={m.month}>
                     <Td>{m.month}</Td>
@@ -168,6 +170,8 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
                     <Td className="text-right"><Money value={m.boundary_collected} /></Td>
                     <Td className="text-right"><Money value={m.amortization_collected} /></Td>
                     <Td className="text-right"><Money value={m.loan_paid} /></Td>
+                    <Td className="text-right"><Money value={m.expenses} /></Td>
+                    <Td className="text-right"><Money value={m.investor_share} /></Td>
                     <Td className="text-right font-medium"><Money value={net} className={net < BigInt(0) ? "text-destructive" : ""} /></Td>
                   </tr>
                 );

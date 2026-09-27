@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,13 @@ export default async function DashboardPage() {
   const alerts = hasAnyRole(session.roles, ["owner_admin", "finance"])
     ? await withUserTx(session.claims, (tx) => financeAlerts(tx, businessToday()))
     : null;
+  const myPayslips = await withUserTx(session.claims, (tx) =>
+    tx.execute<{ id: string; period_start: string; period_end: string; net: string }>(sql`
+      SELECT l.id, p.period_start::text, p.period_end::text, l.net_pay_centavos::text AS net
+      FROM public.payroll_lines l JOIN public.payroll_periods p ON p.id = l.period_id
+      WHERE l.employee_id = app.current_employee_id() AND p.status <> 'draft'
+      ORDER BY p.period_start DESC LIMIT 6`),
+  );
   const modules = navForRoles(session.roles)
     .flatMap((s) => s.items)
     .filter((i) => i.href !== "/app");
@@ -62,6 +70,21 @@ export default async function DashboardPage() {
             </Card>
           ) : null}
         </div>
+      ) : null}
+      {myPayslips.length ? (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>My payslips</CardTitle>
+            <ul className="text-sm">
+              {myPayslips.map((p) => (
+                <li key={p.id} className="flex justify-between py-0.5">
+                  <a className="underline" href={`/app/payroll/payslip/${p.id}`} target="_blank">{p.period_start} – {p.period_end}</a>
+                  <Money value={p.net} />
+                </li>
+              ))}
+            </ul>
+          </CardHeader>
+        </Card>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {modules.map((m) => (

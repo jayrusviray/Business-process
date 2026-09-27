@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import Link from "next/link";
 import { BoundaryCalendar, parseMonthParam } from "@/components/boundary-calendar";
 import { BonusList, DriverSummary, QuotaProgress, RtoProgressCard } from "@/components/driver-summary";
@@ -25,6 +25,15 @@ export default async function PortalPage({ searchParams }: PageProps<"/portal">)
     const [me] = await tx.select({ id: drivers.id }).from(drivers).where(eq(drivers.profileId, session.userId));
     return me ? getDriverOverview(tx, me.id, today, month) : null;
   });
+  const investor = !o && session.roles.includes("investor")
+    ? await withUserTx(session.claims, async (tx) => ({
+        vehicles: await tx.execute<{ plate_no: string; make: string; model: string }>(sql`SELECT plate_no, make, model FROM public.vehicles WHERE investor_id = app.current_investor_id() ORDER BY plate_no`),
+        payouts: await tx.execute<{ id: string; month: string; plate_no: string; payable: string; status: string; paid_on: string | null }>(sql`
+          SELECT p.id, p.month::text, v.plate_no, p.payable_centavos::text AS payable, p.status, p.paid_on::text
+          FROM public.investor_payouts p JOIN public.vehicles v ON v.id = p.vehicle_id
+          WHERE p.investor_id = app.current_investor_id() ORDER BY p.month DESC, v.plate_no LIMIT 36`),
+      }))
+    : null;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4">
@@ -32,7 +41,40 @@ export default async function PortalPage({ searchParams }: PageProps<"/portal">)
         <span className="font-semibold">TransRev</span>
         <SignOutButton />
       </header>
-      {!o ? (
+      {investor ? (
+        <>
+          <h1 className="text-xl font-semibold">Hi{session.profile.fullName ? `, ${session.profile.fullName}` : ""}!</h1>
+          <Card>
+            <CardHeader><CardTitle>Your vehicles</CardTitle></CardHeader>
+            <CardContent>
+              <ul className="text-sm">
+                {investor.vehicles.length === 0 ? <li className="text-muted-foreground">No vehicles linked yet.</li> : null}
+                {investor.vehicles.map((v) => <li key={v.plate_no}>{v.plate_no} · {v.make} {v.model}</li>)}
+              </ul>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Monthly share</CardTitle>
+              <CardDescription>22 days of the driver&apos;s boundary less the driver&apos;s monthly RTO amortization, per vehicle.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="divide-y text-sm">
+                {investor.payouts.length === 0 ? <li className="py-2 text-muted-foreground">Nothing computed yet.</li> : null}
+                {investor.payouts.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between py-2">
+                    <span>{p.month.slice(0, 7)} · {p.plate_no}</span>
+                    <span className="flex items-center gap-2">
+                      <Money value={p.payable} />
+                      <Badge variant={p.status === "paid" ? "success" : "muted"}>{p.status === "paid" ? `paid ${p.paid_on}` : "pending"}</Badge>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </>
+      ) : !o ? (
         <Card>
           <CardHeader>
             <CardTitle>Hi{session.profile.fullName ? `, ${session.profile.fullName}` : ""}!</CardTitle>

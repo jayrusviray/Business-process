@@ -62,7 +62,7 @@ export const vehicles = pgTable(
     acquisitionCostCentavos: bigint("acquisition_cost_centavos", { mode: "bigint" }),
     acquiredOn: date("acquired_on"),
     fundingSource: fundingSource("funding_source").notNull().default("company"),
-    /** FK to investors is added in Phase 6. */
+    /** FK to investors (added in migration 0012; kept as a plain column here to avoid a schema import cycle). */
     investorId: uuid("investor_id"),
     status: vehicleStatus("status").notNull().default("available"),
     notes: text("notes").notNull().default(""),

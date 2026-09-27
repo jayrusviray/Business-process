@@ -78,6 +78,20 @@
       "when": 1790509498932,
       "tag": "0010_reminders_security_seed",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790515901295,
+      "tag": "0011_office",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790515902167,
+      "tag": "0012_office_security_seed",
+      "breakpoints": true
     }
   ]
 }

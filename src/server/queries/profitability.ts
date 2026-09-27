@@ -8,12 +8,14 @@ export type VehicleMonth = {
   boundary_collected: string;
   amortization_collected: string;
   loan_paid: string;
+  expenses: string;
+  investor_share: string;
 };
 
 /**
  * Per-vehicle monthly income vs. financing cost (owner/finance only: loan data is RLS-restricted).
  * "Collected" = the paid part of that month's dues (oldest-first allocation), attributed to the
- * vehicle the driver had on each day. Operating expenses per vehicle join in Phase 6.
+ * vehicle the driver had on each day. Costs: loan payments, expenses tagged to the vehicle, investor share.
  */
 export async function vehicleProfitability(tx: Tx, vehicleId: string, today: IsoDate, months = 12): Promise<VehicleMonth[]> {
   const from = addMonths(startOfMonth(today), -(months - 1));
@@ -28,6 +30,15 @@ export async function vehicleProfitability(tx: Tx, vehicleId: string, today: Iso
       WHERE vehicle_id = ${vehicleId}::uuid AND due_date >= ${from}::date
       GROUP BY 1, 2
     ),
+    exp AS (
+      SELECT date_trunc('month', expense_date)::date AS m, SUM(amount_centavos) AS amt
+      FROM public.expenses WHERE vehicle_id = ${vehicleId}::uuid AND voided_at IS NULL AND expense_date >= ${from}::date
+      GROUP BY 1
+    ),
+    inv AS (
+      SELECT month AS m, SUM(payable_centavos) AS amt FROM public.investor_payouts
+      WHERE vehicle_id = ${vehicleId}::uuid AND month >= ${from}::date GROUP BY 1
+    ),
     loans AS (
       SELECT date_trunc('month', lp.paid_on)::date AS m, SUM(lp.amount_centavos) AS paid
       FROM public.loan_payments lp JOIN public.vehicle_loans l ON l.id = lp.loan_id
@@ -38,6 +49,8 @@ export async function vehicleProfitability(tx: Tx, vehicleId: string, today: Iso
       COALESCE((SELECT charged FROM dues WHERE dues.m = months.m AND entry_type = 'boundary_charge'), 0)::text AS boundary_charged,
       COALESCE((SELECT paid FROM dues WHERE dues.m = months.m AND entry_type = 'boundary_charge'), 0)::text AS boundary_collected,
       COALESCE((SELECT paid FROM dues WHERE dues.m = months.m AND entry_type = 'amortization_charge'), 0)::text AS amortization_collected,
-      COALESCE((SELECT paid FROM loans WHERE loans.m = months.m), 0)::text AS loan_paid
+      COALESCE((SELECT paid FROM loans WHERE loans.m = months.m), 0)::text AS loan_paid,
+      COALESCE((SELECT amt FROM exp WHERE exp.m = months.m), 0)::text AS expenses,
+      COALESCE((SELECT amt FROM inv WHERE inv.m = months.m), 0)::text AS investor_share
     FROM months ORDER BY months.m DESC`);
 }

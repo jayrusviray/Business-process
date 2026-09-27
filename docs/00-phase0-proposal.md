@@ -1,6 +1,6 @@
 # TransRev Operations System: Phase 0 Proposal
 
-Status: Phases 1–5 are built. The owner's answers are in §6 (round 1), §8 (round 2), §10 (round 3), §11 (round 4) and §12 (round 5). Where this document conflicts with §8–§12, the later sections win.
+Status: Phases 1–6 are built. The owner's answers are in §6 (round 1), §8 (round 2), §10 (round 3), §11 (round 4) and §12 (round 5). Where this document conflicts with §8–§12, the later sections win.
 
 ---
 
@@ -330,3 +330,26 @@ These answers **replace** the earlier design where they conflict. In particular,
 - **Opt-outs** are honoured when reminders are generated.
 - **The SMS provider interface** (`src/server/sms/provider.ts`) currently has only the "manual" provider. A gateway can be added later without touching the reminder rules.
 - Franchise expiry reminders go to operators and belong with Applications (Phase 7).
+
+## 13. Phase 6 decisions: expenses, payroll, commissions, investors
+
+The owner asked (2026-09-27) to use **Philippine Labor Code defaults, with every rate configurable**. These defaults are open for the owner and accountant to confirm:
+
+| Topic | Default used | Setting |
+|---|---|---|
+| Cut-offs / pay day | 1st–15th and 16th–end, each paid on its last day | `payroll.pay_delay_days` (0) |
+| Daily rate (monthly-paid) | monthly × 12 ÷ **261** | `payroll.working_days_per_year` |
+| Hours per day | 8 (lates deducted per minute at the hourly rate) | `payroll.hours_per_day` |
+| Premiums | Overtime 125%, rest day / special day 130%, regular holiday 200% (monthly-paid get the extra 100%, since the holiday is already in their salary), night differential 10% | `payroll.premium_rates` |
+| Government deductions | Based on the monthly salary and split in half across both cut-offs (owner). Tax is withheld per cut-off by annualising (×24) against the TRAIN table. | versioned `gov_contribution_tables` |
+| Cash advances | Unliquidated after 7 days → proposed as a salary deduction (owner rule). Receipts turned in become "Travel & meetings" expenses. | `payroll.ca_deduct_after_days` |
+| 13th month | Basic salary earned in finalized payrolls of the year ÷ 12. Amounts above ₱90,000 are flagged for the accountant; the extra tax is not computed. | `payroll.thirteenth_month_tax_exempt_centavos` |
+| Referral commission | 10% of the down payment, payable 1 month after the contract start (owner) | `commissions.referral_*` |
+| Investor share | 22 × the driver's daily boundary − the driver's monthly RTO amortization (owner). A negative month is paid as ₱0.00 and flagged. | `investors.boundary_days` |
+
+- **Contribution base:** SSS, PhilHealth and Pag-IBIG are all computed on the monthly **basic** salary. For daily-paid staff that is daily rate × 261 ÷ 12.
+- **Payroll corrections:** a finalized payroll is locked in the database. Corrections go into the next payroll.
+- **Payroll cost:** "Mark paid" books the payroll cost (gross + employer contributions) under "Salaries", and staff reimbursements under "Travel & meetings".
+- **Record corrections:** expenses, cash advances and commissions received can only be voided, never edited or deleted.
+- **Self-service views:** staff linked to a login see their own finalized payslips on the dashboard. Investors see their vehicles and monthly shares in the portal.
+- **Commissions received** (from platforms or dealers) are recorded one by one, since what platforms and dealers pay for isn't specified yet.

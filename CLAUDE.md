@@ -31,7 +31,8 @@ Local DB tests: a Postgres 16 with user `postgres`/`postgres` and database `tran
 - `src/lib/money.ts`, `src/lib/dates.ts`: the only way to handle money and business dates.
 - `src/lib/settings/*`: the Zod registry for `app_settings` and government table configs.
 - `src/lib/nav.ts`: staff navigation and module roles (single source of truth). Bump `CURRENT_PHASE` when a phase ships.
-- `src/server/money/*`: money services (charges, payments, fleet). `src/server/queries/*`: read models for screens.
+- `src/server/money/*`: money services (charges, payments, fleet, RTO, loans). `src/server/office/*`: expenses, payroll, commissions, investors. `src/server/queries/*`: read models for screens. `src/server/pdf/*`, `src/server/xlsx/*`: exports.
+- `src/lib/payroll.ts`: all payroll math (pure, exact integer arithmetic). Rates come from settings and the versioned government tables.
 
 ## Money rules (non-negotiable)
 1. **Integer centavos, always.** DB columns are `bigint` (`*_centavos`), and TS uses the `bigint` type (`Centavos`). Never use `number` or `parseFloat` for money. Parse input with `parsePeso`, display with `formatPeso`. Rates are basis points; use `applyBps` / `divRound`, where rounding is explicit.
@@ -76,7 +77,7 @@ Business dates are `Asia/Manila` calendar dates (`IsoDate` "YYYY-MM-DD", Postgre
 3. ✅ Driver dashboard, portal (mobile + password login), quotas and bonuses, statement PDF.
 4. ✅ RTO contracts (no interest, price ÷ term) and cashout, vehicle loan schedules (diminishing balance), per-vehicle profitability, finance alerts.
 5. ✅ Reminders: daily outbox, sent manually from staff phones (no SMS gateway yet), EN/Taglish templates, schedules, log, opt-outs. Provider interface kept for a future gateway.
-6. Expenses, payroll, commissions (referral = 10% of down payment, after 1 month), investor share (22 × daily boundary rate − driver's monthly RTO amortization, monthly).
+6. ✅ Expenses (budgets, recurring bills), payroll (semi-monthly, Labor Code defaults in settings, payslip PDF, register XLSX, cash advances, 13th month), commissions (referral 10% of down payment after 1 month; received), investor share (22 × daily boundary − driver's monthly RTO amortization).
 7. Applications, CRM, school landing page.
 8. Reports, business dashboard, exports.
 9. Spreadsheet import, hardening, Playwright, deployment docs.

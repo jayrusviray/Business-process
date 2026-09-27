@@ -67,6 +67,56 @@ export const settingsRegistry = {
     group: "Payroll",
     schema: z.boolean(),
   },
+  "payroll.working_days_per_year": {
+    label: "Working days per year (daily rate divisor)",
+    group: "Payroll",
+    schema: z.number().int().min(200).max(365),
+  },
+  "payroll.hours_per_day": {
+    label: "Hours per working day",
+    group: "Payroll",
+    schema: z.number().int().min(1).max(12),
+  },
+  "payroll.premium_rates": {
+    label: "Premium pay rates (basis points)",
+    group: "Payroll",
+    schema: z.object({
+      overtime_bps: z.number().int().min(10000).max(40000),
+      rest_or_special_day_bps: z.number().int().min(10000).max(40000),
+      regular_holiday_bps: z.number().int().min(10000).max(40000),
+      night_diff_bps: z.number().int().min(0).max(10000),
+    }),
+  },
+  "payroll.pay_delay_days": {
+    label: "Pay date: days after cut-off end",
+    group: "Payroll",
+    schema: z.number().int().min(0).max(15),
+  },
+  "payroll.ca_deduct_after_days": {
+    label: "Deduct unliquidated cash advances after (days)",
+    group: "Payroll",
+    schema: z.number().int().min(0).max(90),
+  },
+  "payroll.thirteenth_month_tax_exempt_centavos": {
+    label: "13th month tax exemption (centavos)",
+    group: "Payroll",
+    schema: z.number().int().min(0),
+  },
+  "commissions.referral_rate_bps": {
+    label: "Referral commission (% of down payment, in bps)",
+    group: "Commissions & investors",
+    schema: z.number().int().min(0).max(10000),
+  },
+  "commissions.referral_wait_months": {
+    label: "Referral commission payable after (months)",
+    group: "Commissions & investors",
+    schema: z.number().int().min(0).max(24),
+  },
+  "investors.boundary_days": {
+    label: "Investor share: boundary days per month",
+    group: "Commissions & investors",
+    schema: z.number().int().min(1).max(31),
+  },
   "messaging.mode": {
     label: "Reminder sending",
     group: "Messaging",

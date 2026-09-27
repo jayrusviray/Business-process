@@ -74,3 +74,10 @@ export const reminderTrigger = pgEnum("reminder_trigger", [
   "manual",
 ]);
 export const messageStatus = pgEnum("message_status", ["pending", "sent", "skipped", "failed"]);
+
+export const salaryBasis = pgEnum("salary_basis", ["monthly", "daily"]);
+export const employeeStatus = pgEnum("employee_status", ["active", "inactive"]);
+export const payrollStatus = pgEnum("payroll_status", ["draft", "finalized", "paid"]);
+export const caSettlementKind = pgEnum("ca_settlement_kind", ["liquidation", "payroll_deduction", "cash_return"]);
+export const commissionStatus = pgEnum("commission_status", ["pending", "approved", "paid", "void"]);
+export const investorPayoutStatus = pgEnum("investor_payout_status", ["draft", "paid"]);

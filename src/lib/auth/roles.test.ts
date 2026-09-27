@@ -28,13 +28,13 @@ describe("navigation", () => {
 
   it("owner_admin sees everything", () => {
     expect(keys(["owner_admin"])).toContain("/app/admin/settings");
-    expect(keys(["owner_admin"])).toContain("/app/m/payroll");
+    expect(keys(["owner_admin"])).toContain("/app/payroll");
   });
 
   it("operations sees collections but not payroll", () => {
     const k = keys(["operations"]);
     expect(k).toContain("/app/collections");
-    expect(k).not.toContain("/app/m/payroll");
+    expect(k).not.toContain("/app/payroll");
   });
 
   it("drops empty sections", () => {

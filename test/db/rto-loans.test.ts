@@ -219,7 +219,7 @@ describe("per-vehicle profitability and finance alerts", () => {
     );
     await withUserTx(as(finance), (tx) => recordLoanPayment(tx, { loanId, paidOn: D("2027-03-10"), amount: pesos(10_000) }));
     const rows = await withUserTx(as(finance), (tx) => vehicleProfitability(tx, v, D("2027-03-31"), 2));
-    expect(rows[0]).toEqual({ month: "2027-03", boundary_charged: "0", boundary_collected: "0", amortization_collected: "70000", loan_paid: "1000000" });
+    expect(rows[0]).toEqual({ month: "2027-03", boundary_charged: "0", boundary_collected: "0", amortization_collected: "70000", loan_paid: "1000000", expenses: "0", investor_share: "0" });
     expect(rows).toHaveLength(2);
   });
 
