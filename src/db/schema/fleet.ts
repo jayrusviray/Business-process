@@ -12,7 +12,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { driverStatus, franchiseKind, fundingSource, vehicleStatus } from "./enums";
+import { driverStatus, franchiseKind, fundingSource, messageLanguage, vehicleStatus } from "./enums";
 import { profiles } from "./foundation";
 
 const audit = {
@@ -39,6 +39,8 @@ export const drivers = pgTable(
     emergencyContactName: text("emergency_contact_name").notNull().default(""),
     emergencyContactPhone: text("emergency_contact_phone").notNull().default(""),
     status: driverStatus("status").notNull().default("applicant"),
+    /** Language for SMS reminders. */
+    preferredLanguage: messageLanguage("preferred_language").notNull().default("taglish"),
     notes: text("notes").notNull().default(""),
     ...audit,
   },

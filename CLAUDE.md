@@ -75,8 +75,8 @@ Business dates are `Asia/Manila` calendar dates (`IsoDate` "YYYY-MM-DD", Postgre
 2. ✅ Money engine: drivers, vehicles, boundary plans, ledger, daily charges, payments, allocation, bulk entry, remittance.
 3. ✅ Driver dashboard, portal (mobile + password login), quotas and bonuses, statement PDF.
 4. ✅ RTO contracts (no interest, price ÷ term) and cashout, vehicle loan schedules (diminishing balance), per-vehicle profitability, finance alerts.
-5. Reminders: templates, schedules and logs. **Owner: no SMS gateway yet; staff send manually** (keep a provider interface for later).
-6. Expenses, payroll, commissions, investor revenue share.
+5. ✅ Reminders: daily outbox, sent manually from staff phones (no SMS gateway yet), EN/Taglish templates, schedules, log, opt-outs. Provider interface kept for a future gateway.
+6. Expenses, payroll, commissions (referral = 10% of down payment, after 1 month), investor share (22 × daily boundary rate − driver's monthly RTO amortization, monthly).
 7. Applications, CRM, school landing page.
 8. Reports, business dashboard, exports.
 9. Spreadsheet import, hardening, Playwright, deployment docs.

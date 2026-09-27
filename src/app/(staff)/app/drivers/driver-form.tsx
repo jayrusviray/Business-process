@@ -17,6 +17,7 @@ type Driver = {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   status?: string;
+  preferredLanguage?: string;
   notes?: string;
 };
 
@@ -59,6 +60,12 @@ export function DriverForm({ action, driver = {}, submitLabel }: { action: (s: A
               {s}
             </option>
           ))}
+        </Select>
+      </Field>
+      <Field label="Reminder language" htmlFor="preferredLanguage">
+        <Select id="preferredLanguage" name="preferredLanguage" defaultValue={driver.preferredLanguage ?? "taglish"}>
+          <option value="taglish">Taglish</option>
+          <option value="en">English</option>
         </Select>
       </Field>
       <Field label="Driver's license no." htmlFor="licenseNo">

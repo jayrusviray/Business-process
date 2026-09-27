@@ -64,6 +64,20 @@
       "when": 1790508627835,
       "tag": "0008_rto_loans_security",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790509498035,
+      "tag": "0009_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790509498932,
+      "tag": "0010_reminders_security_seed",
+      "breakpoints": true
     }
   ]
 }

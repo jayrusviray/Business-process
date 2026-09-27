@@ -1,6 +1,6 @@
 # TransRev Operations System: Phase 0 Proposal
 
-Status: Phases 1–4 are built. The owner's answers are in §6 (round 1), §8 (round 2), §10 (round 3) and §11 (round 4). Where this document conflicts with §8–§11, the later sections win.
+Status: Phases 1–5 are built. The owner's answers are in §6 (round 1), §8 (round 2), §10 (round 3), §11 (round 4) and §12 (round 5). Where this document conflicts with §8–§12, the later sections win.
 
 ---
 
@@ -307,3 +307,26 @@ These answers **replace** the earlier design where they conflict. In particular,
 - **Termination:** future installments stop and arrears remain owed.
 - **Bank loans:** diminishing-balance annuity, computed in exact integer arithmetic. The schedule is stored once when the loan is created. Payments apply to the oldest installment first, and corrections are reversals. Finance sees alerts N days before each due date (setting `loans.due_alert_days`).
 - **Per-vehicle profitability:** the paid part of boundary and RTO dues attributed to the vehicle, minus loan payments. Operating expenses come in Phase 6.
+
+## 12. Owner answers, round 5 (2026-09-27)
+
+| Question | Answer | Design impact |
+|---|---|---|
+| Cashout requires all balances to be clear | **Yes** | `rto.cashout_requires_clear_balances = true` is confirmed. |
+| Which amortization is subtracted for the investor share | **The driver's monthly (RTO) amortization** | Phase 6: monthly investor share per vehicle = 22 × the driver's daily boundary rate − that driver's monthly RTO amortization. No percentage split. Paid monthly. |
+
+### Phase 5 decisions (reminders, sent manually)
+- **Every morning at 08:00 Manila** (cron `/api/cron/reminders`, or the "Prepare now" button), reminders are generated into an **outbox**. Staff tap **Open SMS** (the phone's messaging app opens with the text filled in), send it, then **Mark sent**. Everything is logged.
+- **Triggers:**
+  - Weekly balance (Monday).
+  - Missed boundary (the next morning).
+  - RTO amortization 3 days before it is due.
+  - RTO amortization 1 day after it is due, if still unpaid.
+  - RTO milestones (25/50/75/100%).
+  - Driver's license expiry (30 days before).
+  
+  Admins can edit each trigger's schedule, and each has a dedupe key so it is never repeated.
+- **Templates are in English and Taglish.** Each driver has a preferred language (default Taglish). Amounts are written "P700.00", because the ₱ sign would cut each SMS from 160 to 70 characters. A template with an unknown `{{variable}}` is reported and never sent.
+- **Opt-outs** are honoured when reminders are generated.
+- **The SMS provider interface** (`src/server/sms/provider.ts`) currently has only the "manual" provider. A gateway can be added later without touching the reminder rules.
+- Franchise expiry reminders go to operators and belong with Applications (Phase 7).

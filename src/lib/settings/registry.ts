@@ -67,6 +67,11 @@ export const settingsRegistry = {
     group: "Payroll",
     schema: z.boolean(),
   },
+  "messaging.mode": {
+    label: "Reminder sending",
+    group: "Messaging",
+    schema: z.enum(["manual"]),
+  },
   "sms.sender_name": {
     label: "SMS sender name",
     group: "Messaging",

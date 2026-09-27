@@ -1,24 +1,15 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { withSystemTx } from "@/db/client";
 import { chargeRuns } from "@/db/schema";
 import { businessToday } from "@/lib/dates";
-import { serverEnv } from "@/lib/env";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { runDailyCharges } from "@/server/money/charges";
 
 export const dynamic = "force-dynamic";
 
-function authorized(req: NextRequest): boolean {
-  const secret = serverEnv().CRON_SECRET;
-  if (!secret) return false;
-  const got = Buffer.from(req.headers.get("authorization") ?? "");
-  const want = Buffer.from(`Bearer ${secret}`);
-  return got.length === want.length && timingSafeEqual(got, want);
-}
-
 /** Vercel Cron → posts today's boundary charges (and any missed days). See vercel.json. */
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAuthorizedCron(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const today = businessToday();
   try {
     const result = await withSystemTx("cron:daily-charges", (tx) => runDailyCharges(tx, today, "cron:daily-charges"));

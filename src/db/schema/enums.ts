@@ -62,3 +62,15 @@ export const quotaResultSource = pgEnum("quota_result_source", ["manual", "csv"]
 
 export const rtoStatus = pgEnum("rto_status", ["active", "completed", "cashed_out", "terminated"]);
 export const loanStatus = pgEnum("loan_status", ["active", "paid_off", "restructured"]);
+
+export const messageLanguage = pgEnum("message_language", ["en", "taglish"]);
+export const reminderTrigger = pgEnum("reminder_trigger", [
+  "balance_weekly",
+  "missed_boundary",
+  "amortization_upcoming",
+  "amortization_missed",
+  "rto_milestone",
+  "license_expiry",
+  "manual",
+]);
+export const messageStatus = pgEnum("message_status", ["pending", "sent", "skipped", "failed"]);

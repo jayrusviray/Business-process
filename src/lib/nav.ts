@@ -20,7 +20,7 @@ const S = "sales" as const;
  * every screen also checks roles server-side, and RLS is the real gate.
  */
 /** Highest build phase delivered so far; later modules show as placeholders. */
-export const CURRENT_PHASE = 4;
+export const CURRENT_PHASE = 5;
 
 export const NAV: NavSection[] = [
   {
@@ -58,7 +58,7 @@ export const NAV: NavSection[] = [
       { href: "/app/m/crm", label: "Leads (CRM)", roles: [A, O, S], phase: 7, description: "Leads from Facebook, the school page and the application form." },
       { href: "/app/m/applications", label: "Applications", roles: [A, O, S], phase: 7, description: "PA/CPC, platform activation and vehicle program applications." },
       { href: "/app/m/school", label: "School page", roles: [A, S], phase: 7, description: "Edit the public school landing page and courses." },
-      { href: "/app/m/reminders", label: "Reminders", roles: [A, F, O], phase: 5, description: "SMS templates, schedules and message log." },
+      { href: "/app/reminders", label: "Reminders", roles: [A, F, O], phase: 5, description: "Daily reminder outbox (sent manually from your phone), templates, schedules and log." },
     ],
   },
   {

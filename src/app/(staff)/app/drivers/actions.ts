@@ -31,6 +31,7 @@ const DriverInput = z.object({
   emergencyContactName: z.string().trim().max(120).default(""),
   emergencyContactPhone: z.string().trim().max(40).default(""),
   status: z.enum(["applicant", "active", "suspended", "completed", "terminated"]),
+  preferredLanguage: z.enum(["en", "taglish"]).default("taglish"),
   notes: z.string().trim().max(2000).default(""),
 });
 
