@@ -1,6 +1,6 @@
 # TransRev Operations System: Phase 0 Proposal
 
-Status: **draft, waiting for owner review**. No application code will be written until the open questions in §6 are answered.
+Status: **partly confirmed**. The owner's answers of 2026-09-27 are recorded in §6. Phase 1 (foundation) is built. Phase 2 (the money engine) waits on the follow-ups in §7.
 
 ---
 
@@ -201,6 +201,37 @@ Nobody gets `UPDATE` or `DELETE` on ledger tables, not even owner_admin. Correct
 
 ---
 
-## 6. Open questions
+## 6. Confirmed business rules (owner, 2026-09-27)
 
-See the conversation summary. The answers will be recorded here once they are confirmed.
+These answers **replace** the earlier design where they conflict. In particular, §3.3's idea of "part of each boundary goes to principal" is dropped.
+
+| # | Question | Answer | Design impact |
+|---|---|---|---|
+| 1 | Daily boundary | **One flat daily rate** per driver | `boundary_plans.daily_rate_centavos`. No weekday/weekend rate table. |
+| 2 | Waivers | **No waivers** (repairs, holidays, typhoons, coding) | No `charge_exceptions` table. Mistakes are fixed only by audited reversal entries. |
+| 3 | Plan follows | **The driver** | Plans belong to the driver. Each charge also stamps the `vehicle_id` assigned on that date, for per-vehicle profitability. |
+| 4 | Hulog / RTO | **A fixed monthly amortization, separate from the boundary.** Ownership transfers when the contract ends. | Two obligation streams: a daily **boundary** account, and a monthly **amortization** account that carries the principal. |
+| 5 | Payment split | **Boundary and amortization are handled separately. Each must be paid in full on schedule.** | Payments target one account, not a shared pool. An amortization installment counts as unpaid until fully covered. |
+| 6 | Allocation / penalties | Allocation "depends". **No penalties.** | `collections.penalties_enabled = false` (seeded). No penalty engine in Phase 2. What allocation depends on is a follow-up (§7). |
+| 7 | Deposits & costs | **Yes, security deposits. All costs are borne by the driver.** | Add a `deposit` account (money held, not income) and a driver-cost charge type (maintenance, charging, insurance…). |
+| 8 | Delinquency | **3 months, flagged** | `collections.delinquency_flag_months = 3` (seeded). Drivers past it are flagged on dashboards. |
+| 9 | Quota | **200 rides in a month** | A `quota_rules` row: metric = trips, period = monthly, threshold = 200. |
+| 10 | Cashout | **Remaining principal, with discounts/fees** | `cashout_rules` stays configurable. Values still needed. |
+| 11 | Vehicle loans | **Diminishing balance** | `vehicle_loans.method = 'diminishing'` with a standard annuity schedule. |
+| 12 | Payroll | **Semi-monthly. SSS, PhilHealth, Pag-IBIG and withholding tax. Travel expenses and cash advances for business meetings. 13th month included.** | `payroll.frequency = semi_monthly` and `payroll.thirteenth_month_enabled = true` (seeded). Cash advances and travel liquidation become their own sub-ledger. |
+| 13 | Investor share | **22 days of boundary − monthly amortization = profit for the investor share** | `investor_vehicle_shares.basis = 'boundary_22d_less_amortization'`. Open points in §7. |
+
+## 7. Follow-ups still needed (these affect money)
+
+1. **Chargeable days.** A flat rate for *every* calendar day, including Sundays? Or are some days not charged? (Q13's "22 days" suggests about 22 working days a month.)
+2. **Amortization amounts and terms.** For a hulog/RTO driver, what are typical amounts (for example ₱X/day plus ₱Y/month)? What is the term in months? On what day of the month is the amortization due? Is there a down payment? Is there any difference between "boundary-hulog" and "RTO", or are they the same program?
+3. **Lump-sum payments.** When a driver hands over one amount that covers both streams, who decides the split: the collector at entry, or a fixed rule (for example boundary first)? What does "depends" depend on?
+4. **Partial amortization.** If a driver pays ₱3,000 toward a ₱5,000 installment, do we accept and hold it (the installment stays unpaid until the rest arrives), or refuse partials?
+5. **Deposit.** Amount? Refundable at the end? Can it be applied to unpaid dues on termination?
+6. **Driver costs.** Which costs are added to the driver's balance (maintenance, EV charging, insurance, registration, platform fees…)? Are they charged at cost, or with a markup?
+7. **Delinquency trigger.** Flag when the *oldest unpaid due* is at least 3 months old, or when *3 monthly amortizations* are missed? Does a flag suspend the driver automatically, or only alert staff?
+8. **Quota bonus.** How much is the bonus for 200 rides a month? Is it paid in cash or credited against the balance? Where do ride counts come from (an inDrive export? Please send a sample)?
+9. **Cashout.** Discount and fee values (percentage or flat)? Any minimum months paid before a cashout is allowed?
+10. **Investor share.** Is "22 days boundary" fixed (22 × daily rate, regardless of what was collected) or the actual amount collected? Is "monthly amortization" the vehicle's bank loan amortization or the driver's amortization? Does the investor get 100% of the result, or a percentage? Paid monthly?
+11. **Payroll details.** Are government deductions split across both cut-offs or taken on one? Are unliquidated cash advances deducted from salary?
+12. **Still unanswered:** Q14–Q22 (referral commission rules, driver login vs SMS-only, SMS provider/sender, Facebook Lead Ads, school details, headcounts, import cutoff date and sample sheets, official receipts).
