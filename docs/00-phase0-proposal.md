@@ -375,3 +375,33 @@ These are items from the full spec (`/mvp` brief, 2026-09-27) that phases 1–6 
   - Because payments apply oldest first, the unpaid boundary days are always the most recent ones, so their count is the run of consecutive unpaid days.
 - **Reminder quiet hours.** "Open SMS" is disabled between 21:00 and 07:00 Manila time (setting `reminders.quiet_hours`).
 - **Upload size.** Server actions now accept up to 9 MB. The default 1 MB rejected normal phone photos of receipts.
+
+## 15. Public website and CRM (M-B)
+
+- **Website at `/`.** The staff app stays at `/app`, and after sign-in users go to `/home`, which sends them to their own area.
+  - Pages: the landing page, `/school` (a placeholder until the owner has details) and `/privacy`.
+  - Content is edited under **Growth → Website** by owner/admin and sales. Visitors see changes on their next page load, because the content cache is refreshed on save.
+  - Brand colours live in one file, `src/app/brand.css`.
+  - The site has search and sharing metadata (title, description, Open Graph with a generated share image, `robots.txt`, `sitemap.xml`, JSON-LD) and is set to be indexed. The staff app stays out of search engines.
+- **Inquiry form.** Consent to the privacy notice (RA 10173) is required. Two spam controls:
+  - A hidden honeypot field: a submission that fills it in is silently dropped.
+  - A rate limit per visitor (`crm.inquiry_rate_limit_per_hour`, default 5). Visitor IPs are stored only as a salted hash.
+- **Leads from the form.** A submission becomes a lead with source "website form". If the same mobile number already has an open lead, the inquiry is added to that lead's timeline instead of creating a duplicate.
+- **Assignment.** New website and Lead Ads leads go to the active sales agent with the fewest open leads. With no agents, owner/admins and sales are notified instead.
+- **Notifications** are in-app (the bell in the header). SMS and email notifications wait for a provider.
+- **CRM.**
+  - A board with one column per configurable stage. Cards move with a stage picker (no drag-and-drop), so it works on phones.
+  - Follow-ups per agent, with overdue highlighting.
+  - Duplicate warning by mobile number on manual entry.
+  - CSV import with a preview. Rows matching an open lead are added to that lead.
+  - Losing a lead requires a reason. Moving it to a "won" stage records the conversion time.
+- **Personal data.** Leads carry no generic audit trail. Instead:
+  - Every stage and assignment change is written to the lead's timeline by the database.
+  - Owner/admin can export a lead's data as JSON, or erase the lead with its timeline, follow-ups and notifications.
+  - Only the fact of an export or erasure is kept, in `privacy_requests`.
+- **Facebook Lead Ads.** A webhook at `/api/webhooks/meta` checks Meta's signature and stores each submission once, keyed on its leadgen id.
+  - It is off until `crm.meta_lead_ads_enabled` is on and `META_APP_SECRET`, `META_VERIFY_TOKEN` and `META_PAGE_ACCESS_TOKEN` are set.
+  - It also needs Meta app review for `leads_retrieval`.
+  - Messenger leads are entered by hand (owner, round 2).
+- **Staff directory.** `app.staff_directory()` lets staff see other active staff and their roles, which drop-downs need. `user_roles` itself stays private.
+  - This also fixes an earlier limit: the "Received by" list on the payment form only ever showed the signed-in user to anyone but owner/admin.

@@ -25,7 +25,8 @@ npm run db:migrate     # apply ./drizzle migrations to DATABASE_URL
 Local DB tests: a Postgres 16 with user `postgres`/`postgres` and database `transrev_test`. `test/db/supabase-stub.sql` imitates Supabase's `auth` schema and roles.
 
 ## Layout
-- `src/app/(auth)`: login. `src/app/(staff)/app`: staff back office. `src/app/(portal)/portal`: driver/investor portal (mobile-first). Later phases add public routes: `/school`, `/apply`.
+- `src/app/(auth)`: login. `src/app/(staff)/app`: staff back office. `src/app/(portal)/portal`: driver/investor portal (mobile-first). `src/app/(public)`: public website (`/`, `/school`, `/privacy`, `/apply`); `/home` routes a signed-in user to their area.
+- Public pages have no DB role of their own (`anon` has no privileges): they read and write only through `src/server/public/*` with `withSystemTx`, with strict Zod validation, a honeypot and rate limiting.
 - `src/db/schema/*`: Drizzle tables. `drizzle/`: versioned migrations. Never edit an applied migration; add a new one.
 - `src/db/client.ts`: `withUserTx` and `withSystemTx` (see Security).
 - `src/lib/money.ts`, `src/lib/dates.ts`: the only way to handle money and business dates.

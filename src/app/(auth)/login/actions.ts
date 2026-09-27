@@ -16,7 +16,7 @@ export type LoginState = { error?: string };
 
 /** Only allow same-site relative redirects after login. */
 function safeNext(next: string | undefined): string {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/home";
 }
 
 export async function signIn(_prev: LoginState, formData: FormData): Promise<LoginState> {

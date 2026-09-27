@@ -83,3 +83,32 @@ export const commissionStatus = pgEnum("commission_status", ["pending", "approve
 export const investorPayoutStatus = pgEnum("investor_payout_status", ["draft", "paid"]);
 
 export const proofStatus = pgEnum("proof_status", ["pending", "approved", "rejected"]);
+
+/** Where a lead came from (spec 4.10). */
+export const leadSource = pgEnum("lead_source", [
+  "facebook_page",
+  "messenger",
+  "fb_lead_ad",
+  "landing_page",
+  "referral",
+  "walk_in",
+  "tiktok",
+  "other",
+]);
+/** TransRev service lines (landing page, CRM interest, application types). */
+export const serviceLine = pgEnum("service_line", ["franchise", "activation", "vehicle_program", "fleet", "investment", "school", "other"]);
+export const leadStageKind = pgEnum("lead_stage_kind", ["open", "won", "lost"]);
+export const contactMethod = pgEnum("contact_method", ["call", "sms", "messenger", "viber", "email"]);
+export const leadActivityKind = pgEnum("lead_activity_kind", [
+  "note",
+  "call",
+  "message",
+  "inquiry",
+  "stage_change",
+  "assignment",
+  "follow_up_done",
+  "converted",
+  "import",
+]);
+/** Sections of the public website that staff edit without a deploy. */
+export const siteSection = pgEnum("site_section", ["hero", "service", "audience", "step", "requirement", "program", "faq", "school", "privacy"]);

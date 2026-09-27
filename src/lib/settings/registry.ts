@@ -155,6 +155,21 @@ export const settingsRegistry = {
       end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     }),
   },
+  "crm.inquiry_rate_limit_per_hour": {
+    label: "Website inquiries accepted per visitor per hour",
+    group: "CRM & website",
+    schema: z.number().int().min(1).max(100),
+  },
+  "crm.meta_lead_ads_enabled": {
+    label: "Accept Facebook Lead Ads (Meta webhook)",
+    group: "CRM & website",
+    schema: z.boolean(),
+  },
+  "site.facebook_url": {
+    label: "Facebook page URL",
+    group: "CRM & website",
+    schema: z.url(),
+  },
 } as const satisfies Record<
   string,
   { label: string; group: string; readOnly?: boolean; schema: z.ZodType }

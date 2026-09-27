@@ -24,7 +24,11 @@ Answers still needed from the owner. Until then, each item runs on the default s
 | 11 | SMS gateway: which aggregator (Semaphore, M360, Globe Labs…) and what budget per SMS? Until then, reminders are sent by hand from staff phones. | Manual sending | `messaging.mode` |
 | 12 | Brand colours, logo and final landing-page copy. | Placeholder theme | Phase 7 |
 | 13 | Number of drivers and vehicles today, and expected in 12 months. | Sized for 500 drivers | — |
-| 14 | School page (`/school`): still wanted? Course details? | Placeholder, marked TODO | Phase 7 |
+| 14 | School page (`/school`): still wanted? Course details? | Placeholder, marked TODO | Website editor |
+| 15 | Website copy: the requirement lists per service are generic placeholders. Please confirm the real LTFRB PA/CPC, activation and vehicle program requirements. | Generic lists | Website editor |
+| 16 | Company address, phone and email for the website footer and receipts. | Empty | `company.profile` |
+| 17 | Facebook Lead Ads: create a Meta app, pass app review for `leads_retrieval`, and give us the app secret and a page access token. | Off | `crm.meta_lead_ads_enabled` + `META_*` env |
+| 18 | Should new website leads be notified by SMS or email as well (needs a provider)? | In-app only | — |
 
 ## Where the spec and the owner disagree
 

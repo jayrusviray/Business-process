@@ -55,9 +55,9 @@ export const NAV: NavSection[] = [
   {
     title: "Growth",
     items: [
-      { href: "/app/m/crm", label: "Leads (CRM)", roles: [A, O, S], phase: 7, description: "Leads from Facebook, the school page and the application form." },
+      { href: "/app/crm", label: "Leads (CRM)", roles: [A, O, S], phase: 7, description: "Leads from Facebook, Messenger, the website and walk-ins: pipeline and follow-ups." },
       { href: "/app/m/applications", label: "Applications", roles: [A, O, S], phase: 7, description: "PA/CPC, platform activation and vehicle program applications." },
-      { href: "/app/m/school", label: "School page", roles: [A, S], phase: 7, description: "Edit the public school landing page and courses." },
+      { href: "/app/website", label: "Website", roles: [A, S], phase: 7, description: "Edit the public website: services, requirements, FAQs and the school page." },
       { href: "/app/reminders", label: "Reminders", roles: [A, F, O], phase: 5, description: "Daily reminder outbox (sent manually from your phone), templates, schedules and log." },
     ],
   },
