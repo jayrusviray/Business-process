@@ -6,14 +6,7 @@ import { withUserTx } from "@/db/client";
 import { businessToday } from "@/lib/dates";
 import { zIsoDate, zPeso } from "@/lib/validation";
 import { formObject, guarded, type ActionState } from "@/server/action";
-import {
-  approveReferral,
-  createReferralCommission,
-  payReferral,
-  recordCommissionReceived,
-  voidCommissionReceived,
-  voidReferral,
-} from "@/server/office/commissions";
+import { approveApplicationCommission, approveReferral, createReferralCommission, payApplicationCommission, payReferral, recordCommissionReceived, voidApplicationCommission, voidCommissionReceived, voidReferral } from "@/server/office/commissions";
 
 const FIN = ["owner_admin", "finance"] as const;
 
@@ -78,5 +71,22 @@ export async function voidReceivedAction(_: ActionState, formData: FormData): Pr
     await withUserTx(s.claims, (tx) => voidCommissionReceived(tx, id, reason, s.userId));
     revalidatePath("/app/commissions");
     return "Voided.";
+  });
+}
+
+/** Application referral commissions: approve → paid, or void (finance / owner). */
+export async function applicationCommissionStepAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const obj = formObject(formData);
+  return guarded(FIN, async (s) => {
+    const { id, step, reference, reason } = z
+      .object({ id: z.guid(), step: z.enum(["approve", "pay", "void"]), reference: z.string().trim().default(""), reason: z.string().trim().default("") })
+      .parse(obj);
+    await withUserTx(s.claims, async (tx) => {
+      if (step === "approve") await approveApplicationCommission(tx, id, s.userId);
+      if (step === "pay") await payApplicationCommission(tx, id, businessToday(), reference);
+      if (step === "void") await voidApplicationCommission(tx, id, reason);
+    });
+    revalidatePath("/app/commissions");
+    return step === "approve" ? "Approved." : step === "pay" ? "Marked as paid." : "Voided.";
   });
 }

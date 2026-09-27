@@ -1,7 +1,8 @@
 "use server";
 
 import { headers } from "next/headers";
-import { InquiryInput } from "@/lib/inquiry";
+import { ApplyInput, InquiryInput } from "@/lib/inquiry";
+import { submitPublicApplication } from "@/server/public/apply";
 import { hashIp, RateLimitedError, submitInquiry } from "@/server/public/inquiry";
 
 export type InquiryState = { ok?: boolean; error?: string };
@@ -21,6 +22,23 @@ export async function submitInquiryAction(_: InquiryState, formData: FormData): 
   try {
     await submitInquiry(parsed.data, hashIp(await visitorIp()));
     return { ok: true };
+  } catch (e) {
+    if (e instanceof RateLimitedError) return { error: e.message };
+    console.error(e);
+    return { error: "Sorry, something went wrong. Please try again or message us on Facebook." };
+  }
+}
+
+export type ApplyState = { ok?: boolean; appNo?: string; error?: string };
+
+/** Public application form → draft application + CRM lead. Same spam controls as the inquiry form. */
+export async function submitApplicationAction(_: ApplyState, formData: FormData): Promise<ApplyState> {
+  if (String(formData.get("website") ?? "").trim() !== "") return { ok: true };
+  const parsed = ApplyInput.safeParse(Object.fromEntries([...formData.entries()].filter(([, v]) => typeof v === "string")));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the form." };
+  try {
+    const res = await submitPublicApplication(parsed.data, hashIp(await visitorIp()));
+    return { ok: true, appNo: res.appNo };
   } catch (e) {
     if (e instanceof RateLimitedError) return { error: e.message };
     console.error(e);

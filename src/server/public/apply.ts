@@ -1,5 +1,6 @@
 import "server-only";
 import { and, count, eq, gt, sql } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
 import { withSystemTx } from "@/db/client";
 import { appSettings, applicationTypes, publicSubmissions } from "@/db/schema";
 import type { ContactMethod } from "@/lib/crm";
@@ -17,8 +18,10 @@ export type PublicApplication = {
   message: string;
 };
 
-/** Active application types offered on the public /apply form. */
-export async function publicApplicationTypes(): Promise<{ key: string; label: string; description: string }[]> {
+/** Active application types offered on the public /apply form (cached with the website content). */
+export const publicApplicationTypes = unstable_cache(loadPublicApplicationTypes, ["public-application-types-v1"], { tags: ["site"], revalidate: 3600 });
+
+export async function loadPublicApplicationTypes(): Promise<{ key: string; label: string; description: string }[]> {
   return withSystemTx("public:apply", (tx) =>
     tx
       .select({ key: applicationTypes.key, label: applicationTypes.label, description: applicationTypes.description })

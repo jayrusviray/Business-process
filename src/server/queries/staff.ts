@@ -23,3 +23,11 @@ export async function listAgents(tx: Tx): Promise<{ id: string; name: string }[]
     WHERE roles && ARRAY['sales', 'operations', 'owner_admin']::text[]
     ORDER BY name`);
 }
+
+/** Staff who handle client applications. */
+export async function listApplicationStaff(tx: Tx): Promise<{ id: string; name: string }[]> {
+  return tx.execute<{ id: string; name: string }>(sql`
+    SELECT id, name FROM app.staff_directory()
+    WHERE roles && ARRAY['documentation', 'sales', 'operations', 'owner_admin']::text[]
+    ORDER BY name`);
+}

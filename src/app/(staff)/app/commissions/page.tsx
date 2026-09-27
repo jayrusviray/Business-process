@@ -1,4 +1,5 @@
 import { asc, desc, sql } from "drizzle-orm";
+import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { Field } from "@/components/field";
 import { Money } from "@/components/money";
@@ -12,7 +13,7 @@ import { withUserTx } from "@/db/client";
 import { commissionsReceived, vehicles } from "@/db/schema";
 import { requireRole } from "@/lib/auth/session";
 import { businessToday } from "@/lib/dates";
-import { createReferralAction, recordReceivedAction, referralStepAction, voidReceivedAction } from "./actions";
+import { applicationCommissionStepAction, createReferralAction, recordReceivedAction, referralStepAction, voidReceivedAction } from "./actions";
 
 export const metadata = { title: "Commissions" };
 
@@ -22,6 +23,11 @@ export default async function CommissionsPage() {
   const session = await requireRole(["owner_admin", "finance"]);
   const today = businessToday();
   const data = await withUserTx(session.claims, async (tx) => ({
+    appCommissions: await tx.execute<{ id: string; application_id: string; app_no: string; client: string; referrer_name: string; referrer_phone: string; mode: string; base: string; rate_bps: number; amount: string; status: string; paid_on: string | null; paid_reference: string | null; void_reason: string | null }>(sql`
+      SELECT c.id, c.application_id, a.app_no, cl.name AS client, c.referrer_name, c.referrer_phone, c.mode, c.base_centavos::text AS base, c.rate_bps,
+        c.amount_centavos::text AS amount, c.status, c.paid_on::text, c.paid_reference, c.void_reason
+      FROM public.application_commissions c JOIN public.applications a ON a.id = c.application_id JOIN public.clients cl ON cl.id = a.client_id
+      ORDER BY c.status = 'pending' DESC, c.status = 'approved' DESC, c.created_at DESC LIMIT 200`),
     referrals: await tx.execute<Referral>(sql`
       SELECT r.id, c.contract_no, d.last_name || ', ' || d.first_name AS driver, r.referrer_type, r.referrer_name,
         r.base_centavos::text AS base, r.rate_bps, r.amount_centavos::text AS amount, r.payable_on::text, r.status, r.paid_on::text, r.paid_reference, r.void_reason
@@ -153,6 +159,56 @@ export default async function CommissionsPage() {
           </Table>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Application referral commissions</CardTitle>
+          <CardDescription>Created when a referred application is approved, using the per-type rules in Applications → Settings.</CardDescription>
+        </CardHeader>
+        <Table>
+          <thead><tr><Th>Referrer</Th><Th>Application</Th><Th className="text-right">Commission</Th><Th>Status</Th></tr></thead>
+          <tbody>
+            {data.appCommissions.length === 0 ? <tr><Td colSpan={4} className="text-muted-foreground">None yet.</Td></tr> : null}
+            {data.appCommissions.map((c) => (
+              <tr key={c.id}>
+                <Td>{c.referrer_name}<div className="text-xs text-muted-foreground">{c.referrer_phone}</div></Td>
+                <Td><Link href={`/app/applications/${c.application_id}`} className="font-mono text-xs underline">{c.app_no}</Link><div className="text-xs text-muted-foreground">{c.client}</div></Td>
+                <Td className="text-right"><Money value={c.amount} /><div className="text-xs text-muted-foreground">{c.mode === "percent" ? <>{c.rate_bps / 100}% of <Money value={c.base} /></> : "fixed"}</div></Td>
+                <Td>
+                  <Badge variant={c.status === "paid" ? "success" : c.status === "void" ? "muted" : "default"}>{c.status}</Badge>
+                  {c.status === "paid" ? <div className="text-xs text-muted-foreground">{c.paid_on} {c.paid_reference}</div> : null}
+                  {c.status === "void" && c.void_reason ? <div className="text-xs text-muted-foreground">{c.void_reason}</div> : null}
+                  {c.status === "pending" ? (
+                    <ActionForm action={applicationCommissionStepAction} inlineStatus className="mt-1 flex gap-1">
+                      <input type="hidden" name="id" value={c.id} />
+                      <input type="hidden" name="step" value="approve" />
+                      <Button type="submit" size="sm" variant="outline">Approve</Button>
+                    </ActionForm>
+                  ) : null}
+                  {c.status === "approved" ? (
+                    <ActionForm action={applicationCommissionStepAction} inlineStatus className="mt-1 flex gap-1">
+                      <input type="hidden" name="id" value={c.id} />
+                      <input type="hidden" name="step" value="pay" />
+                      <Input name="reference" placeholder="Reference" className="h-8 w-28" />
+                      <Button type="submit" size="sm">Paid</Button>
+                    </ActionForm>
+                  ) : null}
+                  {c.status === "pending" || c.status === "approved" ? (
+                    <details className="mt-1"><summary className="cursor-pointer text-xs text-muted-foreground">Void</summary>
+                      <ActionForm action={applicationCommissionStepAction} className="mt-1 flex gap-1">
+                        <input type="hidden" name="id" value={c.id} />
+                        <input type="hidden" name="step" value="void" />
+                        <Input name="reason" placeholder="Reason" className="h-8" required />
+                        <Button type="submit" size="sm" variant="destructive">Void</Button>
+                      </ActionForm>
+                    </details>
+                  ) : null}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </Card>
     </>
   );
 }

@@ -29,6 +29,9 @@ Answers still needed from the owner. Until then, each item runs on the default s
 | 16 | Company address, phone and email for the website footer and receipts. | Empty | `company.profile` |
 | 17 | Facebook Lead Ads: create a Meta app, pass app review for `leads_retrieval`, and give us the app secret and a page access token. | Off | `crm.meta_lead_ads_enabled` + `META_*` env |
 | 18 | Should new website leads be notified by SMS or email as well (needs a provider)? | In-app only | — |
+| 19 | Application fees: the standard service fee per application type (LTFRB PA/CPC, activation, vehicle programs). | ₱0 (quoted per application) | Applications → Settings |
+| 20 | The real document checklists per application type (the seeded ones are generic). | Generic lists | Applications → Settings |
+| 21 | Referral commissions on applications: amount or % of fees per type (see #3). | None active | Applications → Settings |
 
 ## Where the spec and the owner disagree
 

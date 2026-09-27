@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { withUserTx } from "@/db/client";
@@ -303,6 +303,7 @@ export async function saveTypeAction(_: ActionState, formData: FormData): Promis
       d.mode === "new" ? tx.insert(applicationTypes).values({ key: d.key, ...row }) : tx.update(applicationTypes).set(row).where(eq(applicationTypes.key, d.key)),
     );
     revalidatePath("/app/applications/settings");
+    revalidateTag("site", { expire: 0 }); // the public /apply form lists the types
     return "Saved.";
   });
 }

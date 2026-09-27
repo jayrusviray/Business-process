@@ -405,3 +405,28 @@ These are items from the full spec (`/mvp` brief, 2026-09-27) that phases 1–6 
   - Messenger leads are entered by hand (owner, round 2).
 - **Staff directory.** `app.staff_directory()` lets staff see other active staff and their roles, which drop-downs need. `user_roles` itself stays private.
   - This also fixes an earlier limit: the "Received by" list on the payment form only ever showed the signed-in user to anyone but owner/admin.
+
+## 16. Client applications (M-C)
+
+- **New role: documentation staff.** They work applications and checklists and count as staff. They see no leads and no money screens beyond an application's own fees.
+  - Because this role was added to the database's list of roles in the same migration run that uses it, the SQL role checks for it compare roles as text (`app.has_any_role_text`).
+- **Configurable by owner/admin** under Applications → Settings:
+  - Application types, each with a default quoted fee (seeded ₱0).
+  - The status pipeline. Each status has a kind (in progress, approved, completed, on hold, cancelled), and reports count by kind.
+  - Document checklists per type. The seeded lists are generic placeholders.
+  - Referral commission rules per type, fixed or a percentage of the fees. None are active until the owner sets them.
+- **An application** belongs to a client (a person or company, reused by mobile number). It gets a copy of its type's checklist and a quoted "Service fee" line.
+  - Every status change is written to a history log by the database, with an optional note. Cancelling needs a reason.
+  - The first approval time and the completion time are stamped once.
+- **Checklist.** Documentation staff upload a file per item and verify it. A replacement file clears the earlier verification. An original seen at the office can be verified without a file.
+- **Fees and payments** follow the money rules: void-only, with idempotent payments. Receipts use the same AR-###### series as driver payments, with a PDF. Balance = active fees − active payments.
+- **Referral commission** is created once, when a referred application is first approved, from the type's rule. Amounts are fixed at creation, and finance approves and pays it on the Commissions page.
+- **Leads convert to applications** from the lead page. The client is reused by mobile number, and the lead moves to its "won" stage with a timeline entry.
+- **Approved driver-program applications** become driver profiles with status "applicant". If a driver already has the same mobile number, that driver is linked instead.
+- **Online applications at `/apply`** create a CRM lead (or add to the person's open lead), a client and a draft application, and notify documentation staff and owner/admins.
+  - The form uses the website's spam controls.
+  - No fees are quoted and no files can be uploaded publicly: documents are collected after staff make contact.
+- **Vehicle papers.**
+  - Vehicles now have a type (ICE, EV or Hybrid; `is_ev` is derived and existing EV flags were carried over), conduction sticker, OR/CR expiry and insurance expiry.
+  - Franchises can be linked to a client for renewal follow-up.
+  - Expiries within 60 days are listed, and those within 30 days (both settings) are shown as urgent: on the vehicle page, on the applications list (franchises), and on the dashboard (M-D).

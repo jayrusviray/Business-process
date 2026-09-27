@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { withUserTx } from "@/db/client";
-import { leadActivities, leadFollowups, leads, leadStages, profiles } from "@/db/schema";
+import { applications, applicationTypes, leadActivities, leadFollowups, leads, leadStages, profiles } from "@/db/schema";
 import { requireRole } from "@/lib/auth/session";
 import { CONTACT_LABELS, followupBucket, SERVICE_LINE_LABELS, SOURCE_LABELS, type ContactMethod } from "@/lib/crm";
 import { addDays, businessToday, type IsoDate } from "@/lib/dates";
-import { listAgents } from "@/server/queries/staff";
+import { listAgents, listApplicationStaff } from "@/server/queries/staff";
+import { convertLeadAction } from "../../applications/actions";
 import { addFollowupAction, addNoteAction, assignLeadAction, completeFollowupAction, eraseLeadAction, moveLeadAction, updateLeadAction } from "../actions";
 import { LeadFields } from "../lead-fields";
 
@@ -54,10 +55,17 @@ export default async function LeadPage({ params }: PageProps<"/app/crm/[id]">) {
       .where(and(eq(leadFollowups.leadId, id), isNull(leadFollowups.doneAt)))
       .orderBy(asc(leadFollowups.dueOn));
     const agents = await listAgents(tx);
-    return { lead, stages, activities, followups, agents };
+    const appStaff = await listApplicationStaff(tx);
+    const types = await tx.select().from(applicationTypes).where(eq(applicationTypes.active, true)).orderBy(asc(applicationTypes.sort));
+    const apps = await tx
+      .select({ id: applications.id, appNo: applications.appNo, typeKey: applications.typeKey })
+      .from(applications)
+      .where(eq(applications.leadId, id))
+      .orderBy(desc(applications.createdAt));
+    return { lead, stages, activities, followups, agents, types, apps, appStaff };
   });
   if (!data) notFound();
-  const { lead, stages, activities, followups, agents } = data;
+  const { lead, stages, activities, followups, agents, types, apps, appStaff } = data;
   const stage = stages.find((s) => s.key === lead.stageKey);
   const today = businessToday();
   const isAdmin = session.roles.includes("owner_admin");
@@ -174,6 +182,43 @@ export default async function LeadPage({ params }: PageProps<"/app/crm/[id]">) {
                 </Select>
                 <Button type="submit" variant="outline">
                   Assign
+                </Button>
+              </ActionForm>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Application</CardTitle>
+              <CardDescription>Open a client application from this lead (the lead is marked converted).</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {apps.map((a) => (
+                <Link key={a.id} href={`/app/applications/${a.id}`} className="text-sm underline">
+                  {a.appNo} · {types.find((t) => t.key === a.typeKey)?.label ?? a.typeKey}
+                </Link>
+              ))}
+              <ActionForm action={convertLeadAction} className="flex flex-col gap-2">
+                <input type="hidden" name="leadId" value={lead.id} />
+                <Select name="typeKey" defaultValue={types.find((t) => t.serviceLine === lead.interest)?.key ?? ""} required aria-label="Application type">
+                  <option value="" disabled>
+                    Choose the application type
+                  </option>
+                  {types.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
+                <Select name="assignedTo" defaultValue={lead.assignedTo ?? session.userId} aria-label="Handled by">
+                  {appStaff.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </Select>
+                <Button type="submit" variant="outline">
+                  Open application
                 </Button>
               </ActionForm>
             </CardContent>

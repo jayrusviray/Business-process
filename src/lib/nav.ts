@@ -14,13 +14,14 @@ const A = "owner_admin" as const;
 const F = "finance" as const;
 const O = "operations" as const;
 const S = "sales" as const;
+const D = "documentation" as const;
 
 /**
  * Single source of truth for staff navigation. UI hiding is a convenience only:
  * every screen also checks roles server-side, and RLS is the real gate.
  */
 /** Highest build phase delivered so far; later modules show as placeholders. */
-export const CURRENT_PHASE = 6;
+export const CURRENT_PHASE = 7;
 
 export const NAV: NavSection[] = [
   {
@@ -56,7 +57,7 @@ export const NAV: NavSection[] = [
     title: "Growth",
     items: [
       { href: "/app/crm", label: "Leads (CRM)", roles: [A, O, S], phase: 7, description: "Leads from Facebook, Messenger, the website and walk-ins: pipeline and follow-ups." },
-      { href: "/app/m/applications", label: "Applications", roles: [A, O, S], phase: 7, description: "PA/CPC, platform activation and vehicle program applications." },
+      { href: "/app/applications", label: "Applications", roles: [A, O, S, D, F], phase: 7, description: "PA/CPC, platform activation, vehicle acquisition and driver program applications." },
       { href: "/app/website", label: "Website", roles: [A, S], phase: 7, description: "Edit the public website: services, requirements, FAQs and the school page." },
       { href: "/app/reminders", label: "Reminders", roles: [A, F, O], phase: 5, description: "Daily reminder outbox (sent manually from your phone), templates, schedules and log." },
     ],

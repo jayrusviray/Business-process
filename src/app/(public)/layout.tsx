@@ -43,6 +43,9 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
             <Link href="/#faqs" className="hidden rounded-md px-2 py-2 hover:bg-muted md:inline">
               FAQs
             </Link>
+            <Link href="/apply" className="rounded-md px-2 py-2 hover:bg-muted">
+              Apply
+            </Link>
             <Link href="/login" className="rounded-md px-2 py-2 text-muted-foreground hover:bg-muted">
               Log in
             </Link>
@@ -89,6 +92,11 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
             <li>
               <Link href="/privacy" className="underline-offset-2 hover:underline">
                 Privacy notice
+              </Link>
+            </li>
+            <li>
+              <Link href="/apply" className="underline-offset-2 hover:underline">
+                Apply online
               </Link>
             </li>
             <li>
