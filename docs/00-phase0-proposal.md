@@ -1,6 +1,6 @@
 # TransRev Operations System: Phase 0 Proposal
 
-Status: Phases 1–2 are built. The owner's answers are in §6 (round 1) and §8 (round 2). Where this document conflicts with §8 or §9, those sections win.
+Status: Phases 1–3 are built. The owner's answers are in §6 (round 1), §8 (round 2) and §10 (round 3). Where this document conflicts with §8–§10, the later sections win.
 
 ---
 
@@ -274,3 +274,19 @@ These answers **replace** the earlier design where they conflict. In particular,
 - **Plans cannot start in the past.** History before go-live comes in as opening balances (import in Phase 9), never as back-dated daily charges.
 - **A void is a separate record** (`payment_voids`) that triggers reversal entries. Payment rows are never changed.
 - **Remittances** cover cash only. If a payment is voided after it was remitted, the remittance shows the voided amount and an adjusted variance.
+
+## 10. Owner answers, round 3 (2026-09-27)
+
+| Question | Answer | Status |
+|---|---|---|
+| A. Does the amortization include interest? | "Yes" | **Needs clarification** (the question was either/or; see below) |
+| B. Investor share details | "Yes" | **Needs clarification** (three sub-questions; see below) |
+| C. SMS provider | Skip for now; send manually | Phase 5 generates the message text for staff to send from their own phone. Driver login uses **mobile number + password**, so no SMS is needed. |
+| D. Referral commission | **A percentage of the down payment, paid after a month** | Phase 6 rule: percentage of down payment, payable 1 month after activation. The percentage is still needed. |
+| E. Holidays | **Regular holidays only** | Seeded: the fixed-date regular holidays, Holy Week and National Heroes Day, through 2027. Eid'l Fitr and Eid'l Adha are added by an admin once proclaimed. |
+
+### Phase 3 decisions
+- **Driver portal login:** mobile number + password. Staff click "Give portal access" and hand the temporary password over in person. Operations and finance may grant only the `driver` role, and only to a login linked to a driver record.
+- **Quota bonuses:** paid in cash or credited to the boundary balance, chosen per award by finance. A result is locked once a bonus is awarded. Voiding a credit reverses the ledger entry.
+- **Seeded quota rule:** "200 rides per month", inactive until an admin sets the bonus amount.
+- **Statement of account:** PDF (for drivers and staff) with the balance brought forward. Amounts show as "PHP" because the PDF's built-in fonts have no ₱ sign.

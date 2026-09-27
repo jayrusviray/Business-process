@@ -421,26 +421,26 @@ describe("driver self-access (RLS)", () => {
 describe("allocation: SQL view matches the TypeScript engine", () => {
   it("fills by due date, not posting order (back-dated debit)", async () => {
     const d = await newDriver();
-    await planFor(d, D("2027-01-01"));
+    await planFor(d, D("2027-01-04"));
     const acct = await boundaryAccount(d);
     await withSystemTx("test", async (tx) => {
-      for (const day of ["2027-01-01", "2027-01-02"]) await postBoundaryCharges(tx, D(day));
+      for (const day of ["2027-01-04", "2027-01-05"]) await postBoundaryCharges(tx, D(day));
     });
     // Posted last, but due first.
     await withUserTx(as(finance), (tx) =>
-      postAdjustment(tx, { accountId: acct, amount: pesos(500), reason: "towing", businessDate: D("2027-01-02"), dueDate: D("2026-12-31") }),
+      postAdjustment(tx, { accountId: acct, amount: pesos(500), reason: "towing", businessDate: D("2027-01-05"), dueDate: D("2027-01-03") }),
     );
     await withUserTx(as(ops), (tx) =>
       recordPayment(tx, {
         clientRequestId: crypto.randomUUID(), driverId: d, method: "cash", receivedAt: new Date(),
-        businessDate: D("2027-01-02"), collectorId: ops, lines: [{ accountId: acct, amount: pesos(700) }],
+        businessDate: D("2027-01-05"), collectorId: ops, lines: [{ accountId: acct, amount: pesos(700) }],
       }),
     );
     const view = await sql`SELECT entry_type, due_date::text due, paid_centavos, status FROM public.v_charge_status WHERE account_id = ${acct} ORDER BY due_date, seq`;
     expect(view).toEqual([
-      { entry_type: "adjustment", due: "2026-12-31", paid_centavos: "50000", status: "paid" },
-      { entry_type: "boundary_charge", due: "2027-01-01", paid_centavos: "20000", status: "partial" },
-      { entry_type: "boundary_charge", due: "2027-01-02", paid_centavos: "0", status: "unpaid" },
+      { entry_type: "adjustment", due: "2027-01-03", paid_centavos: "50000", status: "paid" },
+      { entry_type: "boundary_charge", due: "2027-01-04", paid_centavos: "20000", status: "partial" },
+      { entry_type: "boundary_charge", due: "2027-01-05", paid_centavos: "0", status: "unpaid" },
     ]);
   });
 

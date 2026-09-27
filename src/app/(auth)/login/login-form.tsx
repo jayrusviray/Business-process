@@ -11,8 +11,8 @@ export function LoginForm({ next }: { next?: string }) {
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={next ?? ""} />
       <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" autoComplete="email" required />
+        <Label htmlFor="email">Email or mobile number</Label>
+        <Input id="email" name="email" type="text" autoComplete="username" placeholder="you@email.com or 0917 123 4567" required />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="password">Password</Label>

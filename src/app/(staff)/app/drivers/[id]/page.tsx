@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { BoundaryCalendar, parseMonthParam } from "@/components/boundary-calendar";
+import { BonusList, DriverSummary, QuotaProgress } from "@/components/driver-summary";
 import { Field } from "@/components/field";
 import { Money } from "@/components/money";
 import { PageHeader } from "@/components/page-header";
@@ -15,13 +16,14 @@ import { withUserTx } from "@/db/client";
 import { boundaryPlans, drivers, holidays, payments, paymentVoids, vehicleAssignments, vehicles } from "@/db/schema";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
-import { addDays, businessToday, daysBetween, endOfMonth, type IsoDate } from "@/lib/dates";
+import { addDays, businessToday, endOfMonth, type IsoDate } from "@/lib/dates";
 import { formatPeso, toDecimalString } from "@/lib/money";
-import { getDriverStatements } from "@/server/money/payments";
+import { getDriverOverview } from "@/server/queries/driver-overview";
 import {
   adjustmentAction,
   assignVehicleAction,
   endPlanAction,
+  portalAccessAction,
   postDriverChargeAction,
   reverseEntryAction,
   startPlanAction,
@@ -73,7 +75,6 @@ export default async function DriverPage({ params, searchParams }: PageProps<"/a
       .from(vehicles)
       .where(eq(vehicles.status, "available"))
       .orderBy(asc(vehicles.plateNo));
-    const statements = await getDriverStatements(tx, id);
     const monthHolidays = await tx
       .select({ date: holidays.date })
       .from(holidays)
@@ -85,18 +86,13 @@ export default async function DriverPage({ params, searchParams }: PageProps<"/a
       .where(eq(payments.driverId, id))
       .orderBy(desc(payments.receivedAt))
       .limit(50);
-    return { driver, plan, plans, assignment, available, statements, monthHolidays, pays };
+    const overview = (await getDriverOverview(tx, id, today, month))!;
+    return { driver, plan, plans, assignment, available, statements: overview.statements, monthHolidays, pays, overview };
   });
   if (!data) notFound();
-  const { driver, plan, plans, assignment, available, statements, monthHolidays, pays } = data;
+  const { driver, plan, plans, assignment, available, statements, monthHolidays, pays, overview } = data;
 
   const boundary = statements.find((s) => s.account.kind === "boundary");
-  const total = statements.reduce((s, st) => s + st.allocation.balance, BigInt(0));
-  const oldestUnpaid = statements
-    .flatMap((s) => s.allocation.charges)
-    .filter((c) => c.status !== "paid" && c.dueDate < today)
-    .map((c) => c.dueDate)
-    .sort()[0];
   const reversedIds = new Set(statements.flatMap((s) => s.entries.map((e) => e.reversesEntryId)).filter(Boolean));
 
   return (
@@ -116,31 +112,61 @@ export default async function DriverPage({ params, searchParams }: PageProps<"/a
         }
       />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6">
+        <DriverSummary o={overview} today={today} />
+      </div>
+
+      <div className="mb-6 grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardDescription>Total balance</CardDescription>
-            <CardTitle className="text-2xl">
-              <Money value={total} signed />
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {oldestUnpaid ? `Oldest unpaid: ${oldestUnpaid} (${daysBetween(oldestUnpaid, today)} days)` : "Nothing overdue"}
-            </p>
+            <CardTitle>Quota &amp; bonuses</CardTitle>
           </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <QuotaProgress o={overview} />
+            <BonusList o={overview} />
+            <Link href="/app/quotas" className="text-sm underline">
+              Enter counts / award bonuses
+            </Link>
+          </CardContent>
         </Card>
-        {statements.map((s) => (
-          <Card key={s.account.id}>
-            <CardHeader>
-              <CardDescription>{ACCOUNT_LABEL[s.account.kind]}</CardDescription>
-              <CardTitle className="text-xl">
-                <Money value={s.allocation.balance} signed />
-              </CardTitle>
-              {s.allocation.unappliedCredit > BigInt(0) ? (
-                <p className="text-xs text-success">Advance credit {formatPeso(s.allocation.unappliedCredit)}</p>
-              ) : null}
-            </CardHeader>
-          </Card>
-        ))}
+        <Card>
+          <CardHeader>
+            <CardTitle>Driver portal</CardTitle>
+            <CardDescription>
+              {driver.profileId
+                ? `The driver logs in with ${driver.phone} and their password.`
+                : "Give the driver a login (mobile number + temporary password). No SMS is sent: hand the password over in person."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ActionForm action={portalAccessAction} className="flex flex-col gap-2">
+              <input type="hidden" name="driverId" value={driver.id} />
+              <input type="hidden" name="mode" value={driver.profileId ? "reset" : "grant"} />
+              <Button type="submit" variant="outline" size="sm" className="self-start">
+                {driver.profileId ? "Reset password" : "Give portal access"}
+              </Button>
+            </ActionForm>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Statement of account</CardTitle>
+            <CardDescription>PDF with balance brought forward.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={`/app/drivers/${driver.id}/statement`} target="_blank" className="flex flex-wrap items-end gap-2">
+              <Field label="From" htmlFor="stFrom">
+                <Input id="stFrom" name="from" type="date" defaultValue={`${today.slice(0, 7)}-01`} />
+              </Field>
+              <Field label="To" htmlFor="stTo">
+                <Input id="stTo" name="to" type="date" defaultValue={today} />
+              </Field>
+              <Button type="submit" variant="outline" size="sm">
+                Download PDF
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="mb-6 grid gap-4 lg:grid-cols-3">

@@ -13,6 +13,7 @@ import { friendlyError } from "@/server/money/errors";
 import { assignVehicle, endBoundaryPlan, startBoundaryPlan, unassignVehicle } from "@/server/money/fleet";
 import { postAdjustment, postDriverCharge, reverseEntry } from "@/server/money/payments";
 import { requireRole } from "@/lib/auth/session";
+import { grantPortalAccess, resetPortalPassword } from "@/server/portal";
 
 const A = "owner_admin" as const;
 const F = "finance" as const;
@@ -150,5 +151,19 @@ export async function reverseEntryAction(_: ActionState, formData: FormData): Pr
     await withUserTx(s.claims, (tx) => reverseEntry(tx, { entryId: input.entryId, reason: input.reason, businessDate: businessToday() }));
     revalidatePath(`/app/drivers/${input.driverId}`);
     return "Entry reversed.";
+  });
+}
+
+/** Creates the driver's portal login, or resets its password if it already exists. */
+export async function portalAccessAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const obj = formObject(formData);
+  return guarded([A, F, O], async (s) => {
+    const { driverId, mode } = z.object({ driverId: z.guid(), mode: z.enum(["grant", "reset"]) }).parse(obj);
+    if (mode === "grant") {
+      const r = await grantPortalAccess(s, driverId);
+      return `Portal access created. Login: ${r.phone} · Temporary password: ${r.password} (shown once; give it to the driver).`;
+    }
+    const r = await resetPortalPassword(s, driverId);
+    return `Password reset. Login: ${r.phone} · New temporary password: ${r.password} (shown once).`;
   });
 }

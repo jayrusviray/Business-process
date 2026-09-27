@@ -122,12 +122,13 @@ export async function voidPayment(tx: Tx, input: { paymentId: string; reason: st
 /** Reverses any single ledger entry (a charge posted in error, etc.). Voids are for payments. */
 export async function reverseEntry(
   tx: Tx,
-  input: { entryId: string; reason: string; businessDate: IsoDate },
+  input: { entryId: string; reason: string; businessDate: IsoDate; allowBonus?: boolean },
 ): Promise<string> {
   if (!input.reason.trim()) throw new MoneyRuleError("A reason is required.");
   const [orig] = await tx.select().from(ledgerEntries).where(eq(ledgerEntries.id, input.entryId));
   if (!orig) throw new MoneyRuleError("Entry not found.");
   if (orig.entryType === "payment") throw new MoneyRuleError("Void the payment instead of reversing its entry.");
+  if (orig.entryType === "bonus_credit" && !input.allowBonus) throw new MoneyRuleError("Void the bonus instead of reversing its entry.");
   if (orig.entryType === "reversal") throw new MoneyRuleError("A reversal cannot be reversed.");
   await lockDriver(tx, orig.driverId);
   const [dup] = await tx.select({ id: ledgerEntries.id }).from(ledgerEntries).where(eq(ledgerEntries.reversesEntryId, orig.id));

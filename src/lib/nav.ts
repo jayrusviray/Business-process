@@ -20,7 +20,7 @@ const S = "sales" as const;
  * every screen also checks roles server-side, and RLS is the real gate.
  */
 /** Highest build phase delivered so far; later modules show as placeholders. */
-export const CURRENT_PHASE = 2;
+export const CURRENT_PHASE = 3;
 
 export const NAV: NavSection[] = [
   {
@@ -39,7 +39,7 @@ export const NAV: NavSection[] = [
     items: [
       { href: "/app/collections", label: "Collections", roles: [A, F, O], phase: 2, description: "Record payments, end-of-day bulk entry and collector remittances." },
       { href: "/app/m/rto", label: "RTO & amortization", roles: [A, F, O], phase: 4, description: "Rent-to-own contracts, monthly amortization dues and cashout quotes." },
-      { href: "/app/m/quotas", label: "Quotas & bonuses", roles: [A, F, O], phase: 3, description: "Monthly ride quotas and bonus postings." },
+      { href: "/app/quotas", label: "Quotas & bonuses", roles: [A, F, O], phase: 3, description: "Monthly ride quotas and bonus postings." },
       { href: "/app/m/commissions", label: "Commissions", roles: [A, F], phase: 6, description: "Referral commissions paid and commissions received." },
     ],
   },

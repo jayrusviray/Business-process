@@ -54,3 +54,8 @@ export const ledgerEntryType = pgEnum("ledger_entry_type", [
 export const paymentMethod = pgEnum("payment_method", ["cash", "gcash", "maya", "bank_transfer", "other"]);
 
 export const chargeRunStatus = pgEnum("charge_run_status", ["running", "succeeded", "failed"]);
+
+export const quotaMetric = pgEnum("quota_metric", ["trips", "earnings_centavos", "boundary_days_paid"]);
+export const quotaPeriod = pgEnum("quota_period", ["monthly", "weekly"]);
+export const bonusPayoutMode = pgEnum("bonus_payout_mode", ["credit", "cash"]);
+export const quotaResultSource = pgEnum("quota_result_source", ["manual", "csv"]);

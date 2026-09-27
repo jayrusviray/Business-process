@@ -36,6 +36,20 @@
       "when": 1790505927493,
       "tag": "0004_money_engine_security",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790507584338,
+      "tag": "0005_quotas",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790507585318,
+      "tag": "0006_quotas_security_portal",
+      "breakpoints": true
     }
   ]
 }
