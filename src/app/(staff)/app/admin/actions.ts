@@ -25,7 +25,7 @@ function dbError(e: unknown): ActionState {
 }
 
 const RoleChange = z.object({
-  userId: z.uuid(),
+  userId: z.guid(),
   role: z.enum(ROLES),
   op: z.enum(["grant", "revoke"]),
 });
@@ -50,7 +50,7 @@ export async function changeRole(_: ActionState, formData: FormData): Promise<Ac
   return { ok: op === "grant" ? "Role granted." : "Role removed." };
 }
 
-const StatusChange = z.object({ userId: z.uuid(), status: z.enum(["active", "disabled"]) });
+const StatusChange = z.object({ userId: z.guid(), status: z.enum(["active", "disabled"]) });
 
 export async function setUserStatus(_: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireRole(["owner_admin"]);

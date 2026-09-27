@@ -89,7 +89,8 @@ describe("user_roles", () => {
 
   it("the last active owner_admin cannot be removed", async () => {
     await asUser(admin, async (tx) => {
-      await tx`DELETE FROM public.user_roles WHERE user_id = ${admin2} AND role = 'owner_admin'`;
+      // Other test files may have created more admins; remove every other one first.
+      await tx`DELETE FROM public.user_roles WHERE role = 'owner_admin' AND user_id <> ${admin}`;
       await expect(
         tx`DELETE FROM public.user_roles WHERE user_id = ${admin} AND role = 'owner_admin'`,
       ).rejects.toThrow(/last active owner_admin/);
@@ -100,12 +101,12 @@ describe("user_roles", () => {
 describe("audit_log", () => {
   it("records before/after and changed fields for updates", async () => {
     await asUser(admin, async (tx) => {
-      await tx`UPDATE public.app_settings SET value = '5' WHERE key = 'collections.delinquency_flag_months'`;
+      await tx`UPDATE public.app_settings SET value = '5' WHERE key = 'collections.charge_catch_up_max_days'`;
       const [a] = await tx`
         SELECT actor_id, before->'value' AS before, after->'value' AS after, changed_fields
         FROM public.audit_log WHERE table_name = 'app_settings' AND action = 'UPDATE'
         ORDER BY id DESC LIMIT 1`;
-      expect(a).toMatchObject({ actor_id: admin, before: 3, after: 5 });
+      expect(a).toMatchObject({ actor_id: admin, before: 31, after: 5 });
       expect(a.changed_fields).toEqual(["value"]);
     });
   });

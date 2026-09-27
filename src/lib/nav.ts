@@ -19,6 +19,9 @@ const S = "sales" as const;
  * Single source of truth for staff navigation. UI hiding is a convenience only:
  * every screen also checks roles server-side, and RLS is the real gate.
  */
+/** Highest build phase delivered so far; later modules show as placeholders. */
+export const CURRENT_PHASE = 2;
+
 export const NAV: NavSection[] = [
   {
     title: "Overview",
@@ -27,14 +30,14 @@ export const NAV: NavSection[] = [
   {
     title: "Fleet",
     items: [
-      { href: "/app/m/drivers", label: "Drivers", roles: [A, F, O], phase: 2, description: "Driver profiles, documents, status and assigned vehicle." },
-      { href: "/app/m/vehicles", label: "Vehicles", roles: [A, F, O], phase: 2, description: "Vehicle records, franchise status, funding source and assignment history." },
+      { href: "/app/drivers", label: "Drivers", roles: [A, F, O], phase: 2, description: "Driver profiles, documents, status and assigned vehicle." },
+      { href: "/app/vehicles", label: "Vehicles", roles: [A, F, O], phase: 2, description: "Vehicle records, franchise status, funding source and assignment history." },
     ],
   },
   {
     title: "Money in",
     items: [
-      { href: "/app/m/collections", label: "Collections", roles: [A, F, O], phase: 2, description: "Record payments, end-of-day bulk entry and collector remittances." },
+      { href: "/app/collections", label: "Collections", roles: [A, F, O], phase: 2, description: "Record payments, end-of-day bulk entry and collector remittances." },
       { href: "/app/m/rto", label: "RTO & amortization", roles: [A, F, O], phase: 4, description: "Rent-to-own contracts, monthly amortization dues and cashout quotes." },
       { href: "/app/m/quotas", label: "Quotas & bonuses", roles: [A, F, O], phase: 3, description: "Monthly ride quotas and bonus postings." },
       { href: "/app/m/commissions", label: "Commissions", roles: [A, F], phase: 6, description: "Referral commissions paid and commissions received." },
@@ -70,6 +73,7 @@ export const NAV: NavSection[] = [
     items: [
       { href: "/app/admin/users", label: "Users & roles", roles: [A], phase: 1 },
       { href: "/app/admin/settings", label: "Settings", roles: [A], phase: 1 },
+      { href: "/app/admin/holidays", label: "Holidays", roles: [A, F, O], phase: 2 },
       { href: "/app/admin/audit", label: "Audit log", roles: [A, F], phase: 1 },
     ],
   },

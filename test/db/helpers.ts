@@ -37,3 +37,16 @@ export async function asUser<T>(userId: string | null, fn: (tx: postgres.Transac
   }
   return result!;
 }
+
+/** Asserts a promise rejects with a message (or Drizzle-wrapped cause) matching `re`. */
+export async function expectDbError(p: Promise<unknown>, re: RegExp): Promise<void> {
+  try {
+    await p;
+  } catch (e) {
+    const err = e as Error & { cause?: Error };
+    const text = `${err.message} ${err.cause?.message ?? ""}`;
+    if (!re.test(text)) throw new Error(`expected error matching ${re}, got: ${text}`);
+    return;
+  }
+  throw new Error(`expected rejection matching ${re}, but it resolved`);
+}

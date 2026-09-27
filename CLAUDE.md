@@ -30,7 +30,8 @@ Local DB tests: a Postgres 16 with user `postgres`/`postgres` and database `tran
 - `src/db/client.ts`: `withUserTx` and `withSystemTx` (see Security).
 - `src/lib/money.ts`, `src/lib/dates.ts`: the only way to handle money and business dates.
 - `src/lib/settings/*`: the Zod registry for `app_settings` and government table configs.
-- `src/lib/nav.ts`: staff navigation and module roles (single source of truth).
+- `src/lib/nav.ts`: staff navigation and module roles (single source of truth). Bump `CURRENT_PHASE` when a phase ships.
+- `src/server/money/*`: money services (charges, payments, fleet). `src/server/queries/*`: read models for screens.
 
 ## Money rules (non-negotiable)
 1. **Integer centavos, always.** DB columns are `bigint` (`*_centavos`), and TS uses the `bigint` type (`Centavos`). Never use `number` or `parseFloat` for money. Parse input with `parsePeso`, display with `formatPeso`. Rates are basis points; use `applyBps` / `divRound`, where rounding is explicit.
@@ -40,6 +41,13 @@ Local DB tests: a Postgres 16 with user `postgres`/`postgres` and database `tran
 5. **Every money job is idempotent.** Use unique idempotency keys (e.g. `charge:{plan}:{date}`) and catch up on missed days.
 6. **Concurrent postings for one driver are serialized** with `pg_advisory_xact_lock` inside the transaction.
 7. **Every money calculation is a pure function with Vitest tests**, including edge cases (partial payment, overpayment, reversal, month-end).
+
+## Ledger model (Phase 2)
+- **`driver_accounts`:** `boundary`, `amortization`, `charges` (costs at cost + the non-refundable deposit). **Payments never move between accounts on their own.** The collector splits each payment (`payment_lines`).
+- **`ledger_entries`:** append-only, signed centavos, ordered by `(due_date, seq)` for allocation. The DB enforces the sign by entry type, due dates on debits, reasons on adjustments/reversals, and account/type matching. Reversals must be the exact opposite amount on the same account.
+- **Allocation (oldest due first) is computed, never stored:** `allocateAccount()` in TS, `v_charge_status` in SQL. They must stay identical; `test/db/money.test.ts` checks this.
+- **Daily charges:** `runDailyCharges()` (cron `/api/cron/daily-charges`, 00:05 PHT) posts from the day after the last successful run up to today. The idempotency key is `boundary:{plan}:{date}`. It skips holidays and non-active drivers.
+- **Services** in `src/server/money/*` take a `Tx` and are called inside `withUserTx`, so RLS still applies. They lock per driver with `lockDriver()`.
 
 ## Dates
 Business dates are `Asia/Manila` calendar dates (`IsoDate` "YYYY-MM-DD", Postgres `date`). Use `businessToday()` / `toBusinessDate()`. Never use `new Date().toISOString().slice(0,10)`: that gives the UTC date, which is wrong from 00:00 to 07:59 PHT. For monthly schedules, use `addMonths(d, n, anchorDay)` so due dates don't drift after a month-end clamp.
@@ -64,7 +72,7 @@ Business dates are `Asia/Manila` calendar dates (`IsoDate` "YYYY-MM-DD", Postgre
 
 ## Build phases
 1. ✅ Foundation: auth, roles, RLS, audit log, settings, app shell, seeds.
-2. Money engine: drivers, vehicles, boundary plans, ledger, daily charges, payments, allocation, bulk entry, remittance. *Blocked on the §7 follow-ups.*
+2. ✅ Money engine: drivers, vehicles, boundary plans, ledger, daily charges, payments, allocation, bulk entry, remittance.
 3. Driver dashboard, portal (phone OTP), quotas and bonuses.
 4. RTO/amortization contracts, cashout, vehicle loan schedules.
 5. Reminders (SMS provider interface, templates, schedules, logs).

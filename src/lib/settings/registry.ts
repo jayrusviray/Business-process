@@ -32,10 +32,15 @@ export const settingsRegistry = {
     group: "Collections",
     schema: z.boolean(),
   },
-  "collections.delinquency_flag_months": {
-    label: "Flag drivers overdue for (months)",
+  "collections.delinquency_missed_amortizations": {
+    label: "Flag drivers after this many missed amortizations",
     group: "Collections",
     schema: z.number().int().min(1).max(24),
+  },
+  "collections.charge_catch_up_max_days": {
+    label: "Daily charge job: max days to back-fill",
+    group: "Collections",
+    schema: z.number().int().min(1).max(366),
   },
   "payroll.frequency": {
     label: "Payroll frequency",

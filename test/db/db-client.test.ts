@@ -56,12 +56,12 @@ describe("withUserTx", () => {
 
   it("audits writes with the user as actor", async () => {
     await withUserTx({ sub: admin }, async (tx) => {
-      await tx.update(appSettings).set({ value: jsonb(4) }).where(dsql`${appSettings.key} = 'collections.delinquency_flag_months'`);
+      await tx.update(appSettings).set({ value: jsonb(4) }).where(dsql`${appSettings.key} = 'collections.charge_catch_up_max_days'`);
     });
     const [a] = await sql`SELECT actor_id FROM public.audit_log WHERE table_name = 'app_settings' ORDER BY id DESC LIMIT 1`;
     expect(a.actor_id).toBe(admin);
     await withUserTx({ sub: admin }, (tx) =>
-      tx.update(appSettings).set({ value: jsonb(3) }).where(dsql`${appSettings.key} = 'collections.delinquency_flag_months'`),
+      tx.update(appSettings).set({ value: jsonb(31) }).where(dsql`${appSettings.key} = 'collections.charge_catch_up_max_days'`),
     );
   });
 });

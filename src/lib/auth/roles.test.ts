@@ -33,7 +33,7 @@ describe("navigation", () => {
 
   it("operations sees collections but not payroll", () => {
     const k = keys(["operations"]);
-    expect(k).toContain("/app/m/collections");
+    expect(k).toContain("/app/collections");
     expect(k).not.toContain("/app/m/payroll");
   });
 

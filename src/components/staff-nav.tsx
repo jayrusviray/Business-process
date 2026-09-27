@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { NavSection } from "@/lib/nav";
+import { CURRENT_PHASE, type NavSection } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 export function StaffNav({ sections, onNavigate }: { sections: NavSection[]; onNavigate?: () => void }) {
@@ -26,7 +26,7 @@ export function StaffNav({ sections, onNavigate }: { sections: NavSection[]; onN
                     )}
                   >
                     {item.label}
-                    {item.phase > 1 ? <span className="text-[10px] text-muted-foreground">P{item.phase}</span> : null}
+                    {item.phase > CURRENT_PHASE ? <span className="text-[10px] text-muted-foreground">P{item.phase}</span> : null}
                   </Link>
                 </li>
               );

@@ -22,6 +22,20 @@
       "when": 1790503880410,
       "tag": "0002_seed_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790505899431,
+      "tag": "0003_money_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790505927493,
+      "tag": "0004_money_engine_security",
+      "breakpoints": true
     }
   ]
 }

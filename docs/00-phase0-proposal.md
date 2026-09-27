@@ -1,6 +1,6 @@
 # TransRev Operations System: Phase 0 Proposal
 
-Status: **partly confirmed**. The owner's answers of 2026-09-27 are recorded in §6. Phase 1 (foundation) is built. Phase 2 (the money engine) waits on the follow-ups in §7.
+Status: Phases 1–2 are built. The owner's answers are in §6 (round 1) and §8 (round 2). Where this document conflicts with §8 or §9, those sections win.
 
 ---
 
@@ -235,3 +235,42 @@ These answers **replace** the earlier design where they conflict. In particular,
 10. **Investor share.** Is "22 days boundary" fixed (22 × daily rate, regardless of what was collected) or the actual amount collected? Is "monthly amortization" the vehicle's bank loan amortization or the driver's amortization? Does the investor get 100% of the result, or a percentage? Paid monthly?
 11. **Payroll details.** Are government deductions split across both cut-offs or taken on one? Are unliquidated cash advances deducted from salary?
 12. **Still unanswered:** Q14–Q22 (referral commission rules, driver login vs SMS-only, SMS provider/sender, Facebook Lead Ads, school details, headcounts, import cutoff date and sample sheets, official receipts).
+
+## 8. Owner answers, round 2 (2026-09-27)
+
+| # | Question | Answer | Design impact |
+|---|---|---|---|
+| 1 | Chargeable days | **Every day except holidays** | `holidays` table (admin-maintained). The daily job skips those dates. |
+| 2 | Amortization terms | **Depends on the vehicle. 5-year contract. Boundary-hulog and RTO are the same program.** | `program_type` is `boundary` or `rto`. Contract amounts are set per contract in Phase 4, with a 60-month term. |
+| 3 | Lump-sum split | **The collector decides** | The payment form takes one amount per account. Nothing moves between accounts automatically. |
+| 4 | Partial amortization | **Accepted** | Held as credit on the amortization account. The installment stays unpaid until fully covered. |
+| 5 | Deposit | **Non-refundable** | `deposit_charge` on the charges account. It is never refunded or auto-applied. |
+| 6 | Driver costs | **At cost** | `cost_charge` with a description. No markup. |
+| 7 | Delinquency | **3 missed amortizations** (flag only) | Setting `collections.delinquency_missed_amortizations = 3`. `countMissed()` counts past-due installments that aren't fully paid. |
+| 8 | Quota bonus | **Cash or credit, either one. Ride counts can come from anywhere.** | Phase 3: payout mode chosen per bonus. Manual entry plus CSV import. |
+| 9 | Cashout | **No discounts, fees or minimums** | Cashout = remaining principal (see open question A). |
+| 10 | Investor share | "Yes, paid monthly" | Monthly. The other sub-questions are still open (see B). |
+| 11 | Payroll | **Deductions split across both cut-offs. Unliquidated cash advances are deducted from salary.** | Phase 6. |
+| 14 | Referral commissions | **A percentage, paid after the driver's first N days** | Phase 6 rule: percentage + N days. The base and N are still needed. |
+| 15 | Driver login | **Yes** | Phase 3 portal. |
+| 16 | SMS | **Smart and Globe; no Semaphore account** | Provider interface in Phase 5. An aggregator is still needed (see C). |
+| 17 | Leads | **Facebook and Messenger** | Phase 7: Lead Ads webhook plus manual Messenger entry. |
+| 18 | Direct payments | **GCash/Maya and bank (BDO), recorded manually by staff** | Payment methods include bank transfer with a bank name. A reference number is required for non-cash payments. |
+| 19 | School details | Not available | Placeholder content marked TODO. |
+| 20 | Receipts | **Acknowledgement receipts only** | Numbered `AR-000001` receipts, labelled "not an official receipt". |
+
+### Still open
+- **A. Cashout principal.** Does the fixed monthly amortization include interest, or is it purely the vehicle price ÷ 60? If it includes interest, "remaining principal" is less than the sum of the remaining installments.
+- **B. Investor share.** Is it 22 × daily rate (fixed) or actual collections? Is the amortization subtracted the bank loan's or the driver's? Does the investor get 100% or a percentage?
+- **C. SMS provider.** Smart and Globe don't sell bulk SMS directly to small businesses. We need an aggregator account (for example Semaphore, M360 or Globe Labs). Phase 3's phone OTP login also depends on it. Until then, drivers could log in by email.
+- **D. Referrals.** What is the percentage of (the boundary? the first payment?), and what is N?
+- **E. Holidays.** Which ones apply: regular holidays only, or special non-working days too?
+
+## 9. Implementation decisions made in Phase 2
+
+- **Allocations are computed, not stored.** Oldest-due-first is a pure function of the ledger (`src/lib/ledger/allocation.ts`), mirrored by the SQL view `v_charge_status`, and a test checks they agree. This keeps statuses correct after reversals, voids and back-dated entries. The `payment_allocations` table from §3.2 is dropped.
+- **Three accounts per driver:** `boundary`, `amortization` (Phase 4) and `charges` (costs and deposit).
+- **Charges apply only to drivers with status `active` on that day.** Suspending a driver stops charges without ending the plan.
+- **Plans cannot start in the past.** History before go-live comes in as opening balances (import in Phase 9), never as back-dated daily charges.
+- **A void is a separate record** (`payment_voids`) that triggers reversal entries. Payment rows are never changed.
+- **Remittances** cover cash only. If a payment is voided after it was remitted, the remittance shows the voided amount and an adjusted variance.
