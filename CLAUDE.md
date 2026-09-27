@@ -74,7 +74,7 @@ Business dates are `Asia/Manila` calendar dates (`IsoDate` "YYYY-MM-DD", Postgre
 1. ✅ Foundation: auth, roles, RLS, audit log, settings, app shell, seeds.
 2. ✅ Money engine: drivers, vehicles, boundary plans, ledger, daily charges, payments, allocation, bulk entry, remittance.
 3. ✅ Driver dashboard, portal (mobile + password login), quotas and bonuses, statement PDF.
-4. RTO/amortization contracts, cashout, vehicle loan schedules.
+4. ✅ RTO contracts (no interest, price ÷ term) and cashout, vehicle loan schedules (diminishing balance), per-vehicle profitability, finance alerts.
 5. Reminders: templates, schedules and logs. **Owner: no SMS gateway yet; staff send manually** (keep a provider interface for later).
 6. Expenses, payroll, commissions, investor revenue share.
 7. Applications, CRM, school landing page.

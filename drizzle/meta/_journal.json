@@ -50,6 +50,20 @@
       "when": 1790507585318,
       "tag": "0006_quotas_security_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790508626980,
+      "tag": "0007_rto_loans",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790508627835,
+      "tag": "0008_rto_loans_security",
+      "breakpoints": true
     }
   ]
 }

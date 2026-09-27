@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import type { Tx } from "@/db/client";
 import { appSettings, chargeRuns } from "@/db/schema";
 import { addDays, daysBetween, type IsoDate } from "@/lib/dates";
+import { postAmortizationCharges } from "./rto";
 
 /**
  * Posts the boundary charge for `date` to every eligible driver. Set-based and
@@ -69,7 +70,10 @@ export async function runDailyCharges(tx: Tx, today: IsoDate, triggeredBy: strin
 
   let posted = 0;
   for (let i = 0; i <= daysBetween(from, today); i++) {
-    posted += await postBoundaryCharges(tx, addDays(from, i));
+    const day = addDays(from, i);
+    posted += await postBoundaryCharges(tx, day);
+    // RTO installments are due regardless of holidays or driver status.
+    posted += await postAmortizationCharges(tx, day);
   }
 
   await tx

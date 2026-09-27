@@ -59,3 +59,6 @@ export const quotaMetric = pgEnum("quota_metric", ["trips", "earnings_centavos",
 export const quotaPeriod = pgEnum("quota_period", ["monthly", "weekly"]);
 export const bonusPayoutMode = pgEnum("bonus_payout_mode", ["credit", "cash"]);
 export const quotaResultSource = pgEnum("quota_result_source", ["manual", "csv"]);
+
+export const rtoStatus = pgEnum("rto_status", ["active", "completed", "cashed_out", "terminated"]);
+export const loanStatus = pgEnum("loan_status", ["active", "paid_off", "restructured"]);

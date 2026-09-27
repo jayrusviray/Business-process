@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { BoundaryCalendar, parseMonthParam } from "@/components/boundary-calendar";
-import { BonusList, DriverSummary, QuotaProgress } from "@/components/driver-summary";
+import { BonusList, DriverSummary, QuotaProgress, RtoProgressCard } from "@/components/driver-summary";
 import { Money } from "@/components/money";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Badge } from "@/components/ui/badge";
@@ -78,8 +78,10 @@ export default async function PortalPage({ searchParams }: PageProps<"/portal">)
           <Card>
             <CardHeader>
               <CardTitle>RTO progress</CardTitle>
-              <CardDescription>Your contract, amount paid and projected completion will appear here once RTO contracts are set up.</CardDescription>
             </CardHeader>
+            <CardContent>
+              <RtoProgressCard o={o} today={today} />
+            </CardContent>
           </Card>
           {o.holidays.some((h) => h.date >= today) ? (
             <Card>

@@ -42,6 +42,21 @@ export const settingsRegistry = {
     group: "Collections",
     schema: z.number().int().min(1).max(366),
   },
+  "rto.default_term_months": {
+    label: "Default RTO term (months)",
+    group: "RTO & loans",
+    schema: z.number().int().min(1).max(120),
+  },
+  "rto.cashout_requires_clear_balances": {
+    label: "Require boundary & costs to be fully paid before ownership transfer",
+    group: "RTO & loans",
+    schema: z.boolean(),
+  },
+  "loans.due_alert_days": {
+    label: "Alert finance this many days before a loan due date",
+    group: "RTO & loans",
+    schema: z.number().int().min(0).max(60),
+  },
   "payroll.frequency": {
     label: "Payroll frequency",
     group: "Payroll",

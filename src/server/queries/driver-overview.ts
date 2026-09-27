@@ -6,6 +6,7 @@ import {
   drivers,
   holidays,
   payments,
+  rtoContracts,
   paymentVoids,
   quotaResults,
   quotaRules,
@@ -16,6 +17,7 @@ import { addDays, endOfMonth, startOfMonth, type IsoDate } from "@/lib/dates";
 import { countMissed } from "@/lib/ledger/allocation";
 import { periodFor, type QuotaPeriod } from "@/lib/quotas";
 import { getDriverStatements } from "@/server/money/payments";
+import { getRtoStatus } from "@/server/money/rto";
 
 /**
  * Everything the driver dashboard (staff) and the driver portal show.
@@ -69,6 +71,14 @@ export async function getDriverOverview(tx: Tx, driverId: string, today: IsoDate
     .orderBy(desc(bonusAwards.paidOn))
     .limit(24);
 
+  const [contract] = await tx
+    .select({ id: rtoContracts.id })
+    .from(rtoContracts)
+    .where(eq(rtoContracts.driverId, driverId))
+    .orderBy(desc(rtoContracts.createdAt))
+    .limit(1);
+  const rto = contract ? await getRtoStatus(tx, contract.id, today) : null;
+
   const holidaySet = new Set(upcomingHolidays.map((h) => h.date));
   const boundary = statements.find((s) => s.account.kind === "boundary");
   const amortization = statements.find((s) => s.account.kind === "amortization");
@@ -108,6 +118,7 @@ export async function getDriverOverview(tx: Tx, driverId: string, today: IsoDate
     todayCharge,
     nextDue,
     missedAmortizations: amortization ? countMissed(amortization.allocation, today) : 0,
+    rto,
   };
 }
 

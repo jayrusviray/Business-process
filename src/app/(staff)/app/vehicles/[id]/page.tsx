@@ -6,13 +6,16 @@ import { Field } from "@/components/field";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Money } from "@/components/money";
 import { Input, Select } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/table";
 import { withUserTx } from "@/db/client";
 import { drivers, franchises, vehicleAssignments, vehicles } from "@/db/schema";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
+import { businessToday } from "@/lib/dates";
+import { vehicleProfitability } from "@/server/queries/profitability";
 import { addFranchise, updateVehicle } from "../actions";
 import { VehicleForm } from "../vehicle-form";
 
@@ -23,6 +26,7 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const canEdit = hasAnyRole(session.roles, ["owner_admin", "operations"]);
+  const canSeeProfit = hasAnyRole(session.roles, ["owner_admin", "finance"]);
   const data = await withUserTx(session.claims, async (tx) => {
     const [vehicle] = await tx.select().from(vehicles).where(eq(vehicles.id, id));
     if (!vehicle) return null;
@@ -33,10 +37,11 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
       .where(eq(vehicleAssignments.vehicleId, id))
       .orderBy(desc(vehicleAssignments.startDate));
     const fr = await tx.select().from(franchises).where(eq(franchises.vehicleId, id)).orderBy(desc(franchises.expiresOn));
-    return { vehicle, history, fr };
+    const profit = canSeeProfit ? await vehicleProfitability(tx, id, businessToday()) : [];
+    return { vehicle, history, fr, profit };
   });
   if (!data) notFound();
-  const { vehicle, history, fr } = data;
+  const { vehicle, history, fr, profit } = data;
 
   return (
     <>
@@ -134,6 +139,43 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
           ) : null}
         </Card>
       </div>
+      {canSeeProfit ? (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Profitability (last 12 months)</CardTitle>
+            <CardDescription>
+              Collected = the paid part of each month&apos;s dues for this vehicle. Loan = payments to the lender. Operating expenses are added in Phase 6.
+            </CardDescription>
+          </CardHeader>
+          <Table>
+            <thead>
+              <tr>
+                <Th>Month</Th>
+                <Th className="text-right">Boundary due</Th>
+                <Th className="text-right">Boundary collected</Th>
+                <Th className="text-right">RTO collected</Th>
+                <Th className="text-right">Loan paid</Th>
+                <Th className="text-right">Net</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {profit.map((m) => {
+                const net = BigInt(m.boundary_collected) + BigInt(m.amortization_collected) - BigInt(m.loan_paid);
+                return (
+                  <tr key={m.month}>
+                    <Td>{m.month}</Td>
+                    <Td className="text-right"><Money value={m.boundary_charged} /></Td>
+                    <Td className="text-right"><Money value={m.boundary_collected} /></Td>
+                    <Td className="text-right"><Money value={m.amortization_collected} /></Td>
+                    <Td className="text-right"><Money value={m.loan_paid} /></Td>
+                    <Td className="text-right font-medium"><Money value={net} className={net < BigInt(0) ? "text-destructive" : ""} /></Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </Card>
+      ) : null}
       {canEdit ? (
         <details>
           <summary className="cursor-pointer text-sm font-medium">Edit vehicle</summary>

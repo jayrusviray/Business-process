@@ -112,17 +112,18 @@ describe("daily boundary charges", () => {
   });
 
   it("runDailyCharges catches up missed days and records the run", async () => {
+    // Far-future dates: other test files share this DB and run the job for earlier dates.
     await sql`SELECT set_config('app.actor_label', 'test', false)`;
     const d = await newDriver();
-    await planFor(d, D("2026-11-01"));
-    const first = await withSystemTx("cron:test", (tx) => runDailyCharges(tx, D("2026-11-01"), "cron:test"));
-    expect(first.fromDate <= "2026-11-01").toBe(true);
+    await planFor(d, D("2030-11-01"));
+    const first = await withSystemTx("cron:test", (tx) => runDailyCharges(tx, D("2030-11-01"), "cron:test"));
+    expect(first.fromDate <= "2030-11-01").toBe(true);
     // Job "fails" to run for 3 days; the next run back-fills 11-02..11-05.
-    const second = await withSystemTx("cron:test", (tx) => runDailyCharges(tx, D("2026-11-05"), "cron:test"));
-    expect([second.fromDate, second.toDate]).toEqual(["2026-11-02", "2026-11-05"]);
+    const second = await withSystemTx("cron:test", (tx) => runDailyCharges(tx, D("2030-11-05"), "cron:test"));
+    expect([second.fromDate, second.toDate]).toEqual(["2030-11-02", "2030-11-05"]);
     expect(await balance(d)).toBe(pesos(700 * 5));
     // Same-day rerun is harmless.
-    const third = await withSystemTx("cron:test", (tx) => runDailyCharges(tx, D("2026-11-05"), "cron:test"));
+    const third = await withSystemTx("cron:test", (tx) => runDailyCharges(tx, D("2030-11-05"), "cron:test"));
     expect(third.chargesPosted).toBe(0);
     const [run] = await sql`SELECT status, triggered_by FROM public.charge_runs ORDER BY started_at DESC LIMIT 1`;
     expect(run).toEqual({ status: "succeeded", triggered_by: "cron:test" });

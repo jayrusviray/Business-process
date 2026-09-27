@@ -1,4 +1,5 @@
 import { Money } from "@/components/money";
+import { ProgressBar } from "@/components/progress-bar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { daysBetween, formatBusinessDate, type IsoDate } from "@/lib/dates";
@@ -121,5 +122,39 @@ export function BonusList({ o }: { o: DriverOverview }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** RTO progress: percentage paid, remaining amount, next due and projected completion. */
+export function RtoProgressCard({ o, href, today }: { o: DriverOverview; href?: string; today: IsoDate }) {
+  const r = o.rto;
+  if (!r) return <p className="text-sm text-muted-foreground">No rent-to-own contract.</p>;
+  const { contract: c, progress: p } = r;
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <div className="flex items-baseline justify-between">
+        <span className="font-medium">{href ? <a href={href} className="underline">{c.contractNo}</a> : c.contractNo}</span>
+        <Badge variant={c.status === "active" ? (r.missed ? "warning" : "success") : "muted"}>
+          {c.status === "active" ? (r.missed ? `${r.missed} missed` : "on track") : c.status.replace("_", " ")}
+        </Badge>
+      </div>
+      <ProgressBar percent={p.percentPaid} label="RTO paid" />
+      <dl className="grid grid-cols-2 gap-y-1">
+        <dt className="text-muted-foreground">Paid</dt>
+        <dd className="text-right"><Money value={p.paid} /> ({p.percentPaid.toFixed(1)}%)</dd>
+        <dt className="text-muted-foreground">Remaining</dt>
+        <dd className="text-right"><Money value={p.remaining} /></dd>
+        <dt className="text-muted-foreground">Installments</dt>
+        <dd className="text-right">{p.installmentsFullyPaid} / {c.termMonths}</dd>
+        {p.nextDue && c.status === "active" ? (
+          <>
+            <dt className="text-muted-foreground">{p.nextDue.dueDate < today ? "Overdue since" : "Next due"}</dt>
+            <dd className="text-right">{formatPeso(p.nextDue.amount)} on {formatBusinessDate(p.nextDue.dueDate)}</dd>
+          </>
+        ) : null}
+        <dt className="text-muted-foreground">Completion</dt>
+        <dd className="text-right">{formatBusinessDate(p.scheduledCompletion)}</dd>
+      </dl>
+    </div>
   );
 }

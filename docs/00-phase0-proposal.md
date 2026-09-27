@@ -1,6 +1,6 @@
 # TransRev Operations System: Phase 0 Proposal
 
-Status: Phases 1–3 are built. The owner's answers are in §6 (round 1), §8 (round 2) and §10 (round 3). Where this document conflicts with §8–§10, the later sections win.
+Status: Phases 1–4 are built. The owner's answers are in §6 (round 1), §8 (round 2), §10 (round 3) and §11 (round 4). Where this document conflicts with §8–§11, the later sections win.
 
 ---
 
@@ -290,3 +290,20 @@ These answers **replace** the earlier design where they conflict. In particular,
 - **Quota bonuses:** paid in cash or credited to the boundary balance, chosen per award by finance. A result is locked once a bonus is awarded. Voiding a credit reverses the ledger entry.
 - **Seeded quota rule:** "200 rides per month", inactive until an admin sets the bonus amount.
 - **Statement of account:** PDF (for drivers and staff) with the balance brought forward. Amounts show as "PHP" because the PDF's built-in fonts have no ₱ sign.
+
+## 11. Owner answers, round 4 (2026-09-27)
+
+| Question | Answer | Design impact |
+|---|---|---|
+| RTO interest | **(b) No interest.** The amortization is the vehicle price ÷ 60. | Installment = (price − down payment) ÷ term. The last installment absorbs the centavo remainder. Cashout = contract price − net amount paid. |
+| Investor share | **22 × the daily boundary rate − the monthly amortization. No percentage split.** | Phase 6. Still to confirm which amortization is subtracted for investor vehicles: the bank loan's or the driver's RTO amortization. |
+| Referral commission | **10% of the down payment, paid after a month** | Phase 6 rule. Default 10%, payable one month after the contract start. |
+
+### Phase 4 decisions
+- **Installments are computed, not stored.** Each posts to the driver's Amortization account on its due date (idempotency key `amort:{contract}:{seq}`). Installments are **not** skipped on holidays or for suspended drivers.
+- **Contracts signed before go-live:** all installments due so far post at set-up. The amount already paid is entered as an opening credit.
+- **Cashout:** the payoff is recorded as a normal payment on the Amortization account. "Close contract" then posts the not-yet-due principal as one payoff charge, closes the account and marks the vehicle as transferred.
+- **Setting `rto.cashout_requires_clear_balances` (default on):** ownership is transferred only if the boundary and costs balances are also clear. **To confirm with the owner.**
+- **Termination:** future installments stop and arrears remain owed.
+- **Bank loans:** diminishing-balance annuity, computed in exact integer arithmetic. The schedule is stored once when the loan is created. Payments apply to the oldest installment first, and corrections are reversals. Finance sees alerts N days before each due date (setting `loans.due_alert_days`).
+- **Per-vehicle profitability:** the paid part of boundary and RTO dues attributed to the vehicle, minus loan payments. Operating expenses come in Phase 6.

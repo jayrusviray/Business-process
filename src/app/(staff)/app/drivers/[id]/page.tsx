@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { BoundaryCalendar, parseMonthParam } from "@/components/boundary-calendar";
-import { BonusList, DriverSummary, QuotaProgress } from "@/components/driver-summary";
+import { BonusList, DriverSummary, QuotaProgress, RtoProgressCard } from "@/components/driver-summary";
 import { Field } from "@/components/field";
 import { Money } from "@/components/money";
 import { PageHeader } from "@/components/page-header";
@@ -116,7 +116,7 @@ export default async function DriverPage({ params, searchParams }: PageProps<"/a
         <DriverSummary o={overview} today={today} />
       </div>
 
-      <div className="mb-6 grid gap-4 lg:grid-cols-3">
+      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle>Quota &amp; bonuses</CardTitle>
@@ -127,6 +127,14 @@ export default async function DriverPage({ params, searchParams }: PageProps<"/a
             <Link href="/app/quotas" className="text-sm underline">
               Enter counts / award bonuses
             </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>RTO progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RtoProgressCard o={overview} today={today} href={overview.rto ? `/app/rto/${overview.rto.contract.id}` : undefined} />
           </CardContent>
         </Card>
         <Card>

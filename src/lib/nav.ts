@@ -20,7 +20,7 @@ const S = "sales" as const;
  * every screen also checks roles server-side, and RLS is the real gate.
  */
 /** Highest build phase delivered so far; later modules show as placeholders. */
-export const CURRENT_PHASE = 3;
+export const CURRENT_PHASE = 4;
 
 export const NAV: NavSection[] = [
   {
@@ -38,7 +38,7 @@ export const NAV: NavSection[] = [
     title: "Money in",
     items: [
       { href: "/app/collections", label: "Collections", roles: [A, F, O], phase: 2, description: "Record payments, end-of-day bulk entry and collector remittances." },
-      { href: "/app/m/rto", label: "RTO & amortization", roles: [A, F, O], phase: 4, description: "Rent-to-own contracts, monthly amortization dues and cashout quotes." },
+      { href: "/app/rto", label: "RTO & amortization", roles: [A, F, O], phase: 4, description: "Rent-to-own contracts, monthly amortization dues and cashout quotes." },
       { href: "/app/quotas", label: "Quotas & bonuses", roles: [A, F, O], phase: 3, description: "Monthly ride quotas and bonus postings." },
       { href: "/app/m/commissions", label: "Commissions", roles: [A, F], phase: 6, description: "Referral commissions paid and commissions received." },
     ],
@@ -46,7 +46,7 @@ export const NAV: NavSection[] = [
   {
     title: "Office",
     items: [
-      { href: "/app/m/loans", label: "Vehicle loans", roles: [A, F], phase: 4, description: "Bank/dealer loan schedules (diminishing balance) and payments." },
+      { href: "/app/loans", label: "Vehicle loans", roles: [A, F], phase: 4, description: "Bank/dealer loan schedules (diminishing balance) and payments." },
       { href: "/app/m/investors", label: "Investors", roles: [A, F], phase: 6, description: "Investor revenue share computations, payouts and statements." },
       { href: "/app/m/expenses", label: "Expenses", roles: [A, F], phase: 6, description: "Operating expenses, recurring bills and budget vs actual." },
       { href: "/app/m/payroll", label: "Payroll", roles: [A, F], phase: 6, description: "Semi-monthly payroll, government deductions, 13th month and payslips." },
