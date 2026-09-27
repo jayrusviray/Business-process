@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { Tx } from "@/db/client";
-import { commissionsReceived, referralCommissions, rtoContracts } from "@/db/schema";
+import { applicationCommissions, commissionsReceived, referralCommissions, rtoContracts } from "@/db/schema";
 import type { IsoDate } from "@/lib/dates";
 import { ZERO, type Centavos } from "@/lib/money";
 import { referralCommission } from "@/lib/office";
@@ -74,4 +74,35 @@ export async function voidCommissionReceived(tx: Tx, id: string, reason: string,
     .where(and(eq(commissionsReceived.id, id), isNull(commissionsReceived.voidedAt)))
     .returning({ id: commissionsReceived.id });
   if (res.length === 0) throw new MoneyRuleError("Not found or already void.");
+}
+
+// ---------------------------------------------------------------------------
+// Application referral commissions (spec 4.11): pending → approved → paid, or void.
+// ---------------------------------------------------------------------------
+export async function approveApplicationCommission(tx: Tx, id: string, userId: string): Promise<void> {
+  const res = await tx
+    .update(applicationCommissions)
+    .set({ status: "approved", approvedAt: new Date(), approvedBy: userId })
+    .where(and(eq(applicationCommissions.id, id), eq(applicationCommissions.status, "pending")))
+    .returning({ id: applicationCommissions.id });
+  if (res.length === 0) throw new MoneyRuleError("Commission not found or not pending.");
+}
+
+export async function payApplicationCommission(tx: Tx, id: string, paidOn: IsoDate, reference: string): Promise<void> {
+  const res = await tx
+    .update(applicationCommissions)
+    .set({ status: "paid", paidOn, paidReference: reference })
+    .where(and(eq(applicationCommissions.id, id), eq(applicationCommissions.status, "approved")))
+    .returning({ id: applicationCommissions.id });
+  if (res.length === 0) throw new MoneyRuleError("Approve the commission before paying it.");
+}
+
+export async function voidApplicationCommission(tx: Tx, id: string, reason: string): Promise<void> {
+  if (!reason.trim()) throw new MoneyRuleError("A reason is required.");
+  const res = await tx
+    .update(applicationCommissions)
+    .set({ status: "void", voidReason: reason.trim() })
+    .where(eq(applicationCommissions.id, id))
+    .returning({ id: applicationCommissions.id });
+  if (res.length === 0) throw new MoneyRuleError("Commission not found.");
 }

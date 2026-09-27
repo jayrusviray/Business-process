@@ -8,6 +8,7 @@ export const appRole = pgEnum("app_role", [
   "sales",
   "driver",
   "investor",
+  "documentation",
 ]);
 
 export const profileStatus = pgEnum("profile_status", ["active", "disabled"]);
@@ -112,3 +113,13 @@ export const leadActivityKind = pgEnum("lead_activity_kind", [
 ]);
 /** Sections of the public website that staff edit without a deploy. */
 export const siteSection = pgEnum("site_section", ["hero", "service", "audience", "step", "requirement", "program", "faq", "school", "privacy"]);
+
+/** Vehicle type (spec 4.2). `vehicles.is_ev` is derived from it. */
+export const powertrain = pgEnum("powertrain", ["ice", "ev", "hybrid"]);
+export const clientKind = pgEnum("client_kind", ["person", "company"]);
+/**
+ * What an application status means for reports: in progress, approved/activated,
+ * released/completed, on hold, or cancelled.
+ */
+export const applicationStatusKind = pgEnum("application_status_kind", ["open", "approved", "completed", "on_hold", "cancelled"]);
+export const commissionMode = pgEnum("commission_mode", ["fixed", "percent"]);

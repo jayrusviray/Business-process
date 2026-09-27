@@ -12,7 +12,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { driverStatus, franchiseKind, fundingSource, messageLanguage, vehicleStatus } from "./enums";
+import { driverStatus, franchiseKind, fundingSource, messageLanguage, powertrain, vehicleStatus } from "./enums";
 import { profiles } from "./foundation";
 
 const audit = {
@@ -56,7 +56,12 @@ export const vehicles = pgTable(
     model: text("model").notNull(),
     year: integer("year"),
     color: text("color").notNull().default(""),
-    isEv: boolean("is_ev").notNull().default(false),
+    powertrain: powertrain("powertrain").notNull().default("ice"),
+    /** Derived from powertrain (EV vs ICE counts, profitability). */
+    isEv: boolean("is_ev").generatedAlwaysAs(sql`powertrain = 'ev'`),
+    conductionSticker: text("conduction_sticker").notNull().default(""),
+    orcrExpiresOn: date("orcr_expires_on"),
+    insuranceExpiresOn: date("insurance_expires_on"),
     region: text("region").notNull().default(""),
     platforms: text("platforms").array().notNull().default(sql`'{}'::text[]`),
     acquisitionCostCentavos: bigint("acquisition_cost_centavos", { mode: "bigint" }),
@@ -80,6 +85,8 @@ export const franchises = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     vehicleId: uuid("vehicle_id").references(() => vehicles.id),
     operatorName: text("operator_name").notNull(),
+    /** The client (operator) who holds it, for renewal follow-up. FK added in migration 0018. */
+    clientId: uuid("client_id"),
     kind: franchiseKind("kind").notNull(),
     number: text("number").notNull(),
     issuedOn: date("issued_on"),

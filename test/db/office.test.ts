@@ -184,7 +184,7 @@ describe("investor share", () => {
   it("22 × driver's daily boundary − driver's monthly RTO amortization; paid rows locked; investor sees own", async () => {
     const setup = await withUserTx(as(ops), async (tx) => {
       const [d] = await tx.insert(drivers).values({ firstName: "Inv", lastName: "Driver", phone: "09176660002", status: "active" }).returning({ id: drivers.id });
-      const [v] = await tx.insert(vehicles).values({ plateNo: "INV 0001", make: "BYD", model: "e6", isEv: true }).returning({ id: vehicles.id });
+      const [v] = await tx.insert(vehicles).values({ plateNo: "INV 0001", make: "BYD", model: "e6", powertrain: "ev" }).returning({ id: vehicles.id });
       const [v2] = await tx.insert(vehicles).values({ plateNo: "INV 0002", make: "BYD", model: "e6" }).returning({ id: vehicles.id });
       await startBoundaryPlan(tx, { driverId: d.id, programType: "rto", dailyRate: pesos(700), effectiveFrom: D("2027-07-01") }, D("2027-07-01"));
       await assignVehicle(tx, { driverId: d.id, vehicleId: v.id, startDate: D("2027-07-01") });

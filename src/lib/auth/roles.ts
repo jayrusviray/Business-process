@@ -1,13 +1,14 @@
-export const ROLES = ["owner_admin", "finance", "operations", "sales", "driver", "investor"] as const;
+export const ROLES = ["owner_admin", "finance", "operations", "sales", "documentation", "driver", "investor"] as const;
 export type Role = (typeof ROLES)[number];
 
-export const STAFF_ROLES = ["owner_admin", "finance", "operations", "sales"] as const satisfies readonly Role[];
+export const STAFF_ROLES = ["owner_admin", "finance", "operations", "sales", "documentation"] as const satisfies readonly Role[];
 
 export const ROLE_LABELS: Record<Role, string> = {
   owner_admin: "Owner / Admin",
   finance: "Finance",
   operations: "Operations / Collector",
   sales: "Sales / CRM",
+  documentation: "Documentation staff",
   driver: "Driver",
   investor: "Investor / Partner",
 };

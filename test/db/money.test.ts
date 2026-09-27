@@ -41,7 +41,7 @@ async function newVehicle() {
   return withUserTx(as(ops), async (tx) => {
     const [v] = await tx
       .insert(vehicles)
-      .values({ plateNo: `ABC ${Math.floor(Math.random() * 1e6)}`, make: "BYD", model: "e6", isEv: true })
+      .values({ plateNo: `ABC ${Math.floor(Math.random() * 1e6)}`, make: "BYD", model: "e6", powertrain: "ev" })
       .returning({ id: vehicles.id });
     return v.id;
   });

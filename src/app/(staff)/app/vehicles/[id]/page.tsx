@@ -11,15 +11,32 @@ import { Money } from "@/components/money";
 import { Input, Select } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/table";
 import { withUserTx } from "@/db/client";
-import { drivers, franchises, vehicleAssignments, vehicleMaintenance, vehicles } from "@/db/schema";
+import { clients, drivers, franchises, vehicleAssignments, vehicleMaintenance, vehicles } from "@/db/schema";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
-import { businessToday } from "@/lib/dates";
+import { expiryLevel } from "@/lib/applications";
+import { addDays, businessToday } from "@/lib/dates";
 import { vehicleProfitability } from "@/server/queries/profitability";
+import { numberSetting } from "@/server/queries/settings";
 import { addFranchise, addMaintenanceAction, updateVehicle, voidMaintenanceAction } from "../actions";
 import { VehicleForm } from "../vehicle-form";
 
 export const metadata = { title: "Vehicle" };
+
+const POWERTRAIN_LABEL = { ice: "ICE", ev: "EV", hybrid: "Hybrid" } as const;
+
+function ExpiryBadge({ date, today, urgentBy, warnBy }: { date: string | null; today: string; urgentBy: string; warnBy: string }) {
+  if (!date) return <span className="text-muted-foreground">—</span>;
+  const level = expiryLevel(date, today, urgentBy, warnBy);
+  return level ? (
+    <Badge variant={level === "warn" ? "warning" : "destructive"}>
+      {level === "expired" ? "expired " : ""}
+      {date}
+    </Badge>
+  ) : (
+    <span>{date}</span>
+  );
+}
 
 export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[id]">) {
   const session = await requireRole(["owner_admin", "finance", "operations"]);
@@ -36,7 +53,17 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
       .innerJoin(drivers, eq(drivers.id, vehicleAssignments.driverId))
       .where(eq(vehicleAssignments.vehicleId, id))
       .orderBy(desc(vehicleAssignments.startDate));
-    const fr = await tx.select().from(franchises).where(eq(franchises.vehicleId, id)).orderBy(desc(franchises.expiresOn));
+    const fr = await tx
+      .select({ f: franchises, clientName: clients.name })
+      .from(franchises)
+      .leftJoin(clients, eq(clients.id, franchises.clientId))
+      .where(eq(franchises.vehicleId, id))
+      .orderBy(desc(franchises.expiresOn));
+    const clientOptions = canEdit ? await tx.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name).limit(500) : [];
+    const [warnDays, urgentDays] = await Promise.all([
+      numberSetting(tx, "alerts.document_expiry_warn_days", 60),
+      numberSetting(tx, "alerts.document_expiry_urgent_days", 30),
+    ]);
     const profit = canSeeProfit ? await vehicleProfitability(tx, id, businessToday()) : [];
     const maintenance = await tx
       .select({ m: vehicleMaintenance, firstName: drivers.firstName, lastName: drivers.lastName })
@@ -44,18 +71,20 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
       .leftJoin(drivers, eq(drivers.id, vehicleMaintenance.driverId))
       .where(eq(vehicleMaintenance.vehicleId, id))
       .orderBy(desc(vehicleMaintenance.serviceDate), desc(vehicleMaintenance.createdAt));
-    return { vehicle, history, fr, profit, maintenance };
+    return { vehicle, history, fr, profit, maintenance, clientOptions, warnDays, urgentDays };
   });
   if (!data) notFound();
-  const { vehicle, history, fr, profit, maintenance } = data;
+  const { vehicle, history, fr, profit, maintenance, clientOptions, warnDays, urgentDays } = data;
   const today = businessToday();
+  const warnBy = addDays(today, warnDays);
+  const urgentBy = addDays(today, urgentDays);
   const current = history.find((h) => h.a.endDate === null);
 
   return (
     <>
       <PageHeader
         title={vehicle.plateNo}
-        description={`${vehicle.make} ${vehicle.model} ${vehicle.year ?? ""}${vehicle.isEv ? " · EV" : ""} · ${vehicle.fundingSource}`}
+        description={`${vehicle.make} ${vehicle.model} ${vehicle.year ?? ""} · ${POWERTRAIN_LABEL[vehicle.powertrain]} · ${vehicle.fundingSource}${vehicle.conductionSticker ? ` · CS ${vehicle.conductionSticker}` : ""}`}
         actions={<Badge className="self-center">{vehicle.status}</Badge>}
       />
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
@@ -95,7 +124,7 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Franchise (PA / CPC)</CardTitle>
+            <CardTitle>Franchise &amp; papers</CardTitle>
           </CardHeader>
           <Table>
             <thead>
@@ -107,14 +136,36 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
               </tr>
             </thead>
             <tbody>
-              {fr.map((f) => (
+              {fr.map(({ f, clientName }) => (
                 <tr key={f.id}>
                   <Td>{f.kind}</Td>
                   <Td>{f.number}</Td>
-                  <Td>{f.operatorName}</Td>
-                  <Td>{f.expiresOn ?? "—"}</Td>
+                  <Td>
+                    {f.clientId ? (
+                      <Link href={`/app/clients/${f.clientId}`} className="underline">
+                        {clientName ?? f.operatorName}
+                      </Link>
+                    ) : (
+                      f.operatorName
+                    )}
+                  </Td>
+                  <Td>
+                    <ExpiryBadge date={f.expiresOn} today={today} urgentBy={urgentBy} warnBy={warnBy} />
+                  </Td>
                 </tr>
               ))}
+              <tr>
+                <Td colSpan={3} className="text-muted-foreground">OR/CR</Td>
+                <Td>
+                  <ExpiryBadge date={vehicle.orcrExpiresOn} today={today} urgentBy={urgentBy} warnBy={warnBy} />
+                </Td>
+              </tr>
+              <tr>
+                <Td colSpan={3} className="text-muted-foreground">Insurance</Td>
+                <Td>
+                  <ExpiryBadge date={vehicle.insuranceExpiresOn} today={today} urgentBy={urgentBy} warnBy={warnBy} />
+                </Td>
+              </tr>
             </tbody>
           </Table>
           {canEdit ? (
@@ -132,6 +183,16 @@ export default async function VehiclePage({ params }: PageProps<"/app/vehicles/[
                 </Field>
                 <Field label="Operator" htmlFor="operatorName">
                   <Input id="operatorName" name="operatorName" required />
+                </Field>
+                <Field label="Client (for renewal reminders)" htmlFor="clientId">
+                  <Select id="clientId" name="clientId" defaultValue="">
+                    <option value="">—</option>
+                    {clientOptions.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
                 </Field>
                 <Field label="Issued" htmlFor="issuedOn">
                   <Input id="issuedOn" name="issuedOn" type="date" />

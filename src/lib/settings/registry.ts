@@ -170,6 +170,16 @@ export const settingsRegistry = {
     group: "CRM & website",
     schema: z.url(),
   },
+  "alerts.document_expiry_warn_days": {
+    label: "Warn about OR/CR, insurance and franchise expiries within (days)",
+    group: "Alerts",
+    schema: z.number().int().min(1).max(365),
+  },
+  "alerts.document_expiry_urgent_days": {
+    label: "Show OR/CR, insurance and franchise expiries as urgent within (days)",
+    group: "Alerts",
+    schema: z.number().int().min(0).max(365),
+  },
 } as const satisfies Record<
   string,
   { label: string; group: string; readOnly?: boolean; schema: z.ZodType }

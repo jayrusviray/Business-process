@@ -120,6 +120,20 @@
       "when": 1790520207614,
       "tag": "0016_crm_security",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790521317267,
+      "tag": "0017_applications",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790521430156,
+      "tag": "0018_applications_security",
+      "breakpoints": true
     }
   ]
 }

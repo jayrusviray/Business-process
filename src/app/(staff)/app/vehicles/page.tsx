@@ -12,7 +12,7 @@ import { businessToday, daysBetween, type IsoDate } from "@/lib/dates";
 export const metadata = { title: "Vehicles" };
 
 type Row = {
-  id: string; plate_no: string; make: string; model: string; year: number | null; is_ev: boolean; status: string;
+  id: string; plate_no: string; make: string; model: string; year: number | null; powertrain: string; status: string;
   funding_source: string; driver_id: string | null; driver_name: string | null; franchise_expires: string | null;
 };
 
@@ -21,7 +21,7 @@ export default async function VehiclesPage() {
   const today = businessToday();
   const rows = await withUserTx(session.claims, (tx) =>
     tx.execute<Row>(sql`
-      SELECT v.id, v.plate_no, v.make, v.model, v.year, v.is_ev, v.status, v.funding_source,
+      SELECT v.id, v.plate_no, v.make, v.model, v.year, v.powertrain, v.status, v.funding_source,
         d.id AS driver_id, d.last_name || ', ' || d.first_name AS driver_name,
         (SELECT MIN(f.expires_on)::text FROM public.franchises f WHERE f.vehicle_id = v.id AND f.expires_on >= ${today}::date) AS franchise_expires
       FROM public.vehicles v
@@ -69,7 +69,8 @@ export default async function VehiclesPage() {
                     </Link>
                   </Td>
                   <Td>
-                    {v.make} {v.model} {v.year ?? ""} {v.is_ev ? <Badge variant="success">EV</Badge> : null}
+                    {v.make} {v.model} {v.year ?? ""}{" "}
+                    {v.powertrain === "ev" ? <Badge variant="success">EV</Badge> : v.powertrain === "hybrid" ? <Badge variant="muted">Hybrid</Badge> : null}
                   </Td>
                   <Td>
                     <Badge variant={v.status === "available" ? "default" : v.status === "assigned" ? "success" : "muted"}>{v.status}</Badge>
