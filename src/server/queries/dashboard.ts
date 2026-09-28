@@ -8,6 +8,7 @@ import { monthlyAmortization } from "@/lib/rto";
 import { getSetting } from "@/server/office/settings";
 import { recurringForMonth } from "@/server/office/expenses";
 import { rtoPortfolio } from "@/server/reports/fleet";
+import { UNREMITTED_CASH } from "./cashbook";
 import { dailyRevenue, REVENUE_LINES } from "@/server/reports/sales";
 
 /**
@@ -343,7 +344,7 @@ export async function collectorVariances(tx: Tx, today: IsoDate, days = 30) {
       WHERE r.business_date >= ${addDays(today, -days)}::date ORDER BY r.business_date DESC`),
     tx.execute<{ collector: string; amount: string; oldest: string }>(sql`
       SELECT COALESCE(NULLIF(c.full_name, ''), c.email) AS collector, SUM(u.amount_centavos)::text AS amount, MIN(u.business_date)::text AS oldest
-      FROM public.v_unremitted_cash u JOIN public.profiles c ON c.id = u.collector_id GROUP BY 1 ORDER BY 2 DESC`),
+      FROM ${UNREMITTED_CASH} u JOIN public.profiles c ON c.id = u.collector_id GROUP BY 1 ORDER BY 2 DESC`),
   ]);
   return {
     variances: variances

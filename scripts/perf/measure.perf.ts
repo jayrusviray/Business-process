@@ -45,6 +45,20 @@ it("measures dashboards and reports", async () => {
     }
   }
 
+  out.push("— cash book page (this month, one transaction as on the page) —");
+  const cb = await import("@/server/queries/cashbook");
+  const { addDays, startOfMonth } = await import("@/lib/dates");
+  await time("cash book: balances + month rows + reconciliations", () =>
+    withUserTx(claims, async (tx) => {
+      await cb.listCashAccounts(tx);
+      await cb.cashBalancesAtMany(tx, [addDays(startOfMonth(today), -1), today]);
+      const rows = await cb.cashBookRows(tx, { from: startOfMonth(today), to: today });
+      await cb.latestReconciliations(tx);
+      await cb.unremittedCash(tx);
+      return rows.length;
+    }),
+  );
+
   out.push("— reports (default ranges) —");
   for (const def of REPORTS) {
     await time(def.key, () =>
