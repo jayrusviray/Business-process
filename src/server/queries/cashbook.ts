@@ -73,10 +73,15 @@ export async function cashBookRows(tx: Tx, f: CashFilter): Promise<CashBookRow[]
 
 /** Book balance of every account at the END of `date` (entries dated on or before it). */
 export async function cashBalancesAt(tx: Tx, date: IsoDate): Promise<Map<string, bigint>> {
-  const rows = await tx.execute<{ account_id: string | null; balance: string }>(sql`
-    SELECT account_id, SUM(signed_centavos)::text AS balance FROM public.v_cash_book
-    WHERE entry_date <= ${date}::date GROUP BY account_id`);
-  return new Map(rows.map((r) => [r.account_id ?? "unassigned", BigInt(r.balance)]));
+  return (await cashBalancesAtMany(tx, [date]))[0];
+}
+
+/** Balances at the end of several dates in one pass over the book (e.g. before a period and today). */
+export async function cashBalancesAtMany(tx: Tx, dates: IsoDate[]): Promise<Map<string, bigint>[]> {
+  const cols = dates.map((d, i) => sql`COALESCE(SUM(signed_centavos) FILTER (WHERE entry_date <= ${d}::date), 0)::text AS ${sql.raw(`b${i}`)}`);
+  const rows = await tx.execute<Record<string, string | null>>(sql`
+    SELECT account_id, ${sql.join(cols, sql`, `)} FROM public.v_cash_movements GROUP BY account_id`);
+  return dates.map((_, i) => new Map(rows.map((r) => [r.account_id ?? "unassigned", BigInt(r[`b${i}`] ?? "0")])));
 }
 
 export type ReconciliationRow = {
@@ -102,13 +107,20 @@ export async function reconciliationsBetween(tx: Tx, from: IsoDate, to: IsoDate)
 
 /** The latest reconciliation of each account, with the book balance for that day as it stands now. */
 export async function latestReconciliations(tx: Tx): Promise<(ReconciliationRow & { live: string })[]> {
-  return tx.execute<ReconciliationRow & { live: string }>(sql`
+  return tx.execute<ReconciliationRow>(sql`
     SELECT DISTINCT ON (r.account_id) r.id, r.account_id, r.as_of_date::text, r.counted_centavos::text AS counted,
       r.system_centavos::text AS system, r.notes, r.created_at,
-      (SELECT COALESCE(NULLIF(p.full_name, ''), p.email) FROM public.profiles p WHERE p.id = r.created_by) AS by,
-      app.cash_balance(r.account_id, r.as_of_date)::text AS live
+      (SELECT COALESCE(NULLIF(p.full_name, ''), p.email) FROM public.profiles p WHERE p.id = r.created_by) AS by
     FROM public.cash_reconciliations r
-    ORDER BY r.account_id, r.as_of_date DESC, r.created_at DESC`);
+    ORDER BY r.account_id, r.as_of_date DESC, r.created_at DESC`).then(async (latest) => {
+    if (latest.length === 0) return [];
+    // The book balance for each reconciled day as it stands now (one pass).
+    const live = await tx.execute<{ account_id: string; live: string }>(sql`
+      WITH r(account_id, as_of) AS (VALUES ${sql.join(latest.map((l) => sql`(${l.account_id}::uuid, ${l.as_of_date}::date)`), sql`, `)})
+      SELECT r.account_id, COALESCE(SUM(m.signed_centavos) FILTER (WHERE m.entry_date <= r.as_of), 0)::text AS live
+      FROM r LEFT JOIN public.v_cash_movements m ON m.account_id = r.account_id GROUP BY r.account_id`);
+    return latest.map((l) => ({ ...l, live: live.find((x) => x.account_id === l.account_id)?.live ?? "0" }));
+  });
 }
 
 /** Cash received by collectors that hasn't been handed to the office yet (shown next to Cash on hand). */

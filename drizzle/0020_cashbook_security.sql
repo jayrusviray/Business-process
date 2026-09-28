@@ -81,24 +81,26 @@ CREATE TRIGGER audit AFTER INSERT ON public.cash_reassignments FOR EACH ROW EXEC
 -- (the cash left when the advance was given). Owner/admin and finance only.
 -- security_invoker: the caller's RLS applies to every source table.
 -- ---------------------------------------------------------------------------
+-- Where each routing key lands: a payment method's own account; for records
+-- without a method, the method chosen in cashbook.default_routing; else 'other'.
+CREATE VIEW public.v_cash_routes WITH (security_invoker = true) AS
+SELECT k.route_key, COALESCE(ca.id, oa.id) AS account_id
+FROM unnest(ARRAY['cash', 'gcash', 'maya', 'bank_transfer', 'other', 'check', 'payroll', 'loan_payment', 'investor_payout',
+  'commission_payout', 'commission_received', 'cash_advance', 'driver_bonus']) AS k(route_key)
+LEFT JOIN public.cash_accounts ca ON ca.payment_method = CASE
+  WHEN k.route_key IN ('cash', 'gcash', 'maya', 'bank_transfer', 'other') THEN k.route_key
+  ELSE COALESCE((SELECT s.value ->> k.route_key FROM public.app_settings s WHERE s.key = 'cashbook.default_routing'), 'other') END
+LEFT JOIN public.cash_accounts oa ON oa.payment_method = 'other';
+--> statement-breakpoint
+-- The latest reassignment of each module record.
+CREATE VIEW public.v_cash_reassigned WITH (security_invoker = true) AS
+SELECT DISTINCT ON (r.source_type, r.source_id) r.source_type, r.source_id, r.account_id
+FROM public.cash_reassignments r
+ORDER BY r.source_type, r.source_id, r.created_at DESC, r.id DESC;
+--> statement-breakpoint
+
 CREATE VIEW public.v_cash_book WITH (security_invoker = true) AS
-WITH other_account AS (
-  SELECT id FROM public.cash_accounts WHERE payment_method = 'other'
-),
-route_account AS (
-  SELECT k.route_key, COALESCE(ca.id, (SELECT id FROM other_account)) AS account_id
-  FROM unnest(ARRAY['cash', 'gcash', 'maya', 'bank_transfer', 'other', 'check', 'payroll', 'loan_payment', 'investor_payout',
-    'commission_payout', 'commission_received', 'cash_advance', 'driver_bonus']) AS k(route_key)
-  LEFT JOIN public.cash_accounts ca ON ca.payment_method = CASE
-    WHEN k.route_key IN ('cash', 'gcash', 'maya', 'bank_transfer', 'other') THEN k.route_key
-    ELSE COALESCE((SELECT s.value ->> k.route_key FROM public.app_settings s WHERE s.key = 'cashbook.default_routing'), 'other') END
-),
-latest_reassignment AS (
-  SELECT DISTINCT ON (r.source_type, r.source_id) r.source_type, r.source_id, r.account_id
-  FROM public.cash_reassignments r
-  ORDER BY r.source_type, r.source_id, r.created_at DESC, r.id DESC
-),
-src AS (
+WITH src AS (
   -- Driver payments, one row per account line (boundary / RTO amortization / costs & deposit).
   SELECT 'payment'::text AS source_type, p.id AS source_id, da.kind::text AS line_key, p.business_date AS entry_date,
     'in'::text AS direction, pl.amount_centavos,
@@ -215,20 +217,87 @@ src AS (
 SELECT s.source_type, s.source_id, s.line_key, s.entry_date, s.direction, s.amount_centavos,
   (CASE s.direction WHEN 'in' THEN s.amount_centavos ELSE -s.amount_centavos END)::bigint AS signed_centavos,
   s.category, s.subcategory, s.method, s.counterparty, s.description, s.reference,
-  COALESCE(s.fixed_account_id, lr.account_id, ra.account_id, (SELECT id FROM other_account)) AS account_id,
+  COALESCE(s.fixed_account_id, lr.account_id, ra.account_id,
+    (SELECT o.id FROM public.cash_accounts o WHERE o.payment_method = 'other')) AS account_id,
   (lr.account_id IS NOT NULL) AS reassigned,
   s.created_at
 FROM src s
-LEFT JOIN latest_reassignment lr ON s.fixed_account_id IS NULL AND lr.source_type = s.source_type AND lr.source_id = s.source_id
-LEFT JOIN route_account ra ON ra.route_key = s.route_key
+LEFT JOIN public.v_cash_reassigned lr ON s.fixed_account_id IS NULL AND lr.source_type = s.source_type AND lr.source_id = s.source_id
+LEFT JOIN public.v_cash_routes ra ON ra.route_key = s.route_key
 -- Owner/admin and finance only (system jobs, which bypass RLS, are allowed). Evaluated once per query.
+WHERE (SELECT current_user::text <> 'authenticated' OR app.has_any_role_text('owner_admin', 'finance'));
+--> statement-breakpoint
+
+-- Lean twin of v_cash_book for balances and totals: one row per movement (a
+-- driver payment once, not per account line), no names. MUST give the same
+-- per-account sums as v_cash_book; test/db/cashbook.test.ts checks it.
+-- operating = false for transfers and opening balances.
+CREATE VIEW public.v_cash_movements WITH (security_invoker = true) AS
+WITH src AS (
+  SELECT 'payment'::text AS source_type, p.id AS source_id, ''::text AS line_key, p.business_date AS entry_date,
+    p.amount_centavos::bigint AS signed_centavos, p.method::text AS route_key, NULL::uuid AS fixed_account_id, true AS operating
+  FROM public.payments p
+  WHERE NOT EXISTS (SELECT 1 FROM public.payment_voids v WHERE v.payment_id = p.id)
+  UNION ALL
+  SELECT 'application_payment', ap.id, '', ap.received_on, ap.amount_centavos, ap.method::text, NULL, true
+  FROM public.application_payments ap WHERE ap.voided_at IS NULL
+  UNION ALL
+  SELECT 'commission_received', cr.id, '', cr.received_on, cr.amount_centavos, 'commission_received', NULL, true
+  FROM public.commissions_received cr WHERE cr.voided_at IS NULL
+  UNION ALL
+  SELECT 'referral_commission', rc.id, '', rc.paid_on, -rc.amount_centavos, 'commission_payout', NULL, true
+  FROM public.referral_commissions rc WHERE rc.status = 'paid' AND rc.paid_on IS NOT NULL AND rc.amount_centavos > 0
+  UNION ALL
+  SELECT 'application_commission', ac.id, '', ac.paid_on, -ac.amount_centavos, 'commission_payout', NULL, true
+  FROM public.application_commissions ac WHERE ac.status = 'paid' AND ac.paid_on IS NOT NULL AND ac.amount_centavos > 0
+  UNION ALL
+  SELECT 'investor_payout', ip.id, '', ip.paid_on, -ip.payable_centavos, 'investor_payout', NULL, true
+  FROM public.investor_payouts ip WHERE ip.status = 'paid' AND ip.paid_on IS NOT NULL AND ip.payable_centavos > 0
+  UNION ALL
+  SELECT 'loan_payment', lp.id, '', lp.paid_on, -lp.amount_centavos, 'loan_payment', NULL, true
+  FROM public.loan_payments lp
+  WHERE lp.reverses_payment_id IS NULL AND NOT EXISTS (SELECT 1 FROM public.loan_payments r WHERE r.reverses_payment_id = lp.id)
+  UNION ALL
+  SELECT 'expense', e.id, '', e.expense_date, -e.amount_centavos, e.paid_via, NULL, true
+  FROM public.expenses e WHERE e.voided_at IS NULL AND e.paid_via <> 'cash_advance'
+  UNION ALL
+  SELECT 'cash_advance', ca.id, '', ca.given_on, -ca.amount_centavos, 'cash_advance', NULL, true
+  FROM public.cash_advances ca WHERE ca.voided_at IS NULL
+  UNION ALL
+  SELECT 'cash_advance_settlement', s.id, '', s.settled_on, s.amount_centavos,
+    CASE s.kind WHEN 'cash_return' THEN 'cash_advance' ELSE 'payroll' END, NULL, true
+  FROM public.cash_advance_settlements s JOIN public.cash_advances ca ON ca.id = s.cash_advance_id
+  WHERE ca.voided_at IS NULL
+    AND (s.kind = 'cash_return'
+      OR (s.kind = 'payroll_deduction' AND EXISTS (
+        SELECT 1 FROM public.payroll_lines pl JOIN public.payroll_periods pp ON pp.id = pl.period_id
+        WHERE pl.id = s.payroll_line_id AND pp.status = 'paid')))
+  UNION ALL
+  SELECT 'bonus_award', b.id, '', b.paid_on, -b.amount_centavos, 'driver_bonus', NULL, true
+  FROM public.bonus_awards b WHERE b.payout_mode = 'cash' AND b.voided_at IS NULL
+  UNION ALL
+  SELECT 'cash_transaction', t.id, CASE WHEN t.category = 'transfer' THEN 'out' ELSE '' END, t.entry_date,
+    CASE WHEN t.category IN ('opening_balance', 'platform_revenue', 'investor_capital', 'owner_capital', 'other_in') THEN t.amount_centavos ELSE -t.amount_centavos END,
+    NULL, t.account_id, t.category NOT IN ('transfer', 'opening_balance')
+  FROM public.cash_transactions t WHERE t.voided_at IS NULL
+  UNION ALL
+  SELECT 'cash_transaction', t.id, 'in', t.entry_date, t.amount_centavos, NULL, t.counter_account_id, false
+  FROM public.cash_transactions t WHERE t.voided_at IS NULL AND t.category = 'transfer'
+)
+SELECT s.source_type, s.source_id, s.line_key, s.entry_date, s.signed_centavos,
+  COALESCE(s.fixed_account_id, lr.account_id, ra.account_id,
+    (SELECT o.id FROM public.cash_accounts o WHERE o.payment_method = 'other')) AS account_id,
+  s.operating
+FROM src s
+LEFT JOIN public.v_cash_reassigned lr ON s.fixed_account_id IS NULL AND lr.source_type = s.source_type AND lr.source_id = s.source_id
+LEFT JOIN public.v_cash_routes ra ON ra.route_key = s.route_key
 WHERE (SELECT current_user::text <> 'authenticated' OR app.has_any_role_text('owner_admin', 'finance'));
 --> statement-breakpoint
 
 -- Book balance of one account at the end of a day.
 CREATE OR REPLACE FUNCTION app.cash_balance(p_account uuid, p_as_of date) RETURNS bigint
 LANGUAGE sql STABLE SET search_path = '' AS $$
-  SELECT COALESCE(SUM(c.signed_centavos), 0)::bigint FROM public.v_cash_book c
+  SELECT COALESCE(SUM(c.signed_centavos), 0)::bigint FROM public.v_cash_movements c
   WHERE c.account_id = p_account AND c.entry_date <= p_as_of
 $$;
 --> statement-breakpoint
@@ -273,31 +342,34 @@ LANGUAGE plpgsql STABLE SET search_path = '' AS $$
 DECLARE
   acc record;
   deb record;
+  v_kind public.account_kind;
   v_left bigint;
 BEGIN
   FOR acc IN
-    SELECT e.account_id AS id, a.kind, SUM(e.amount_centavos)::bigint AS balance
+    SELECT e.account_id AS id, SUM(e.amount_centavos)::bigint AS balance
     FROM public.ledger_entries e
-    JOIN public.driver_accounts a ON a.id = e.account_id
     WHERE p_as_of IS NULL OR e.business_date <= p_as_of
-    GROUP BY e.account_id, a.kind
+    GROUP BY e.account_id
     HAVING SUM(e.amount_centavos) > 0
   LOOP
+    SELECT a.kind INTO v_kind FROM public.driver_accounts a WHERE a.id = acc.id;
     v_left := acc.balance;
+    -- Newest first along ledger_open_walk_idx; the loop stops as soon as the balance is covered.
     FOR deb IN
       SELECT e.id, e.driver_id, e.entry_type, e.due_date, e.vehicle_id, e.amount_centavos
       FROM public.ledger_entries e
       WHERE e.account_id = acc.id AND e.amount_centavos > 0 AND e.entry_type <> 'reversal'
         AND (p_as_of IS NULL OR e.business_date <= p_as_of)
-        AND NOT EXISTS (
-          SELECT 1 FROM public.ledger_entries r
-          WHERE r.reverses_entry_id = e.id AND (p_as_of IS NULL OR r.business_date <= p_as_of))
       ORDER BY e.due_date DESC, e.seq DESC
     LOOP
+      -- A reversed debit no longer exists (its reversal is part of the balance too).
+      CONTINUE WHEN EXISTS (
+        SELECT 1 FROM public.ledger_entries r
+        WHERE r.reverses_entry_id = deb.id AND (p_as_of IS NULL OR r.business_date <= p_as_of));
       entry_id := deb.id;
       account_id := acc.id;
       driver_id := deb.driver_id;
-      account_kind := acc.kind;
+      account_kind := v_kind;
       entry_type := deb.entry_type;
       due_date := deb.due_date;
       vehicle_id := deb.vehicle_id;
@@ -321,8 +393,9 @@ GRANT EXECUTE ON FUNCTION app.open_charges(date), app.cash_balance(uuid, date) T
 -- ---------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS payments_business_date_idx ON public.payments (business_date);
 --> statement-breakpoint
--- Newest-first walk of an account's debits (app.open_charges) and per-account allocation order.
-CREATE INDEX IF NOT EXISTS ledger_account_due_seq_idx ON public.ledger_entries (account_id, due_date, seq);
+-- Newest-first walk of an account's debits (app.open_charges): read in index order, no sort.
+CREATE INDEX IF NOT EXISTS ledger_open_walk_idx ON public.ledger_entries (account_id, due_date DESC, seq DESC)
+  WHERE amount_centavos > 0 AND entry_type <> 'reversal';
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS ledger_due_date_idx ON public.ledger_entries (due_date) WHERE amount_centavos > 0;
 --> statement-breakpoint
@@ -437,7 +510,7 @@ ALTER POLICY payroll_periods_own ON public.payroll_periods USING (status <> 'dra
 -- Privileges + RLS: owner/admin and finance only.
 -- ---------------------------------------------------------------------------
 REVOKE ALL ON public.cash_accounts, public.cash_transactions, public.cash_reconciliations, public.cash_reassignments,
-  public.v_cash_book FROM anon, authenticated;
+  public.v_cash_book, public.v_cash_movements, public.v_cash_routes, public.v_cash_reassigned FROM anon, authenticated;
 --> statement-breakpoint
 GRANT SELECT, INSERT, UPDATE ON public.cash_accounts TO authenticated;
 --> statement-breakpoint
@@ -445,7 +518,7 @@ GRANT SELECT, INSERT ON public.cash_transactions, public.cash_reconciliations, p
 --> statement-breakpoint
 GRANT UPDATE (voided_at, voided_by, void_reason) ON public.cash_transactions TO authenticated;
 --> statement-breakpoint
-GRANT SELECT ON public.v_cash_book TO authenticated;
+GRANT SELECT ON public.v_cash_book, public.v_cash_movements, public.v_cash_routes, public.v_cash_reassigned TO authenticated;
 --> statement-breakpoint
 ALTER TABLE public.cash_accounts ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
