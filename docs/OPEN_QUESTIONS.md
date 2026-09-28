@@ -32,6 +32,11 @@ Answers still needed from the owner. Until then, each item runs on the default s
 | 19 | Application fees: the standard service fee per application type (LTFRB PA/CPC, activation, vehicle programs). | ₱0 (quoted per application) | Applications → Settings |
 | 20 | The real document checklists per application type (the seeded ones are generic). | Generic lists | Applications → Settings |
 | 21 | Referral commissions on applications: amount or % of fees per type (see #3). | None active | Applications → Settings |
+| 30 | Cash book: from which account are payroll, bank-loan payments, investor payouts and commission payouts paid, and where do platform/dealer commissions arrive? (Only affects which account's balance moves, not amounts.) | Cash advances and cash bonuses → Cash on hand; checks → BDO bank; the rest → "Other" until decided. A single record can be moved. | `cashbook.default_routing` |
+| 31 | Cash book: payroll is counted as money out on the pay date at gross + employer contributions (the payroll expense). Government remittances actually leave later. Is that acceptable, or should net pay and remittances be tracked separately? | Payroll expense on the pay date | — |
+| 32 | Do you have more than one bank account (e.g. BDO and BPI)? Payments only record "bank transfer" plus a free-text bank name. | One bank account (BDO) | Cash book → Accounts |
+| 33 | Who should get the nightly Daily Collection Report email, and from which sender address (needs a Resend account)? | Off | `reports.daily_email_to` + `RESEND_API_KEY`, `REPORTS_EMAIL_FROM` env |
+| 34 | Dashboard thresholds: aging buckets (1–7, 8–15, 16–30, 30+ days), "RTO nearing completion" (3 installments left), upcoming payables window (14 days). | As listed | `dashboard.*` |
 
 ## Where the spec and the owner disagree
 

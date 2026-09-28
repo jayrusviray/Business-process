@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** A payment method that a cash account can be tied to (cash book routing). */
+const zRoutableMethod = z.enum(["cash", "gcash", "maya", "bank_transfer", "other"]);
+
 /**
  * Every key in `app_settings` must be declared here. Writes are validated
  * against `schema`; a DB test asserts seeded values parse.
@@ -179,6 +182,44 @@ export const settingsRegistry = {
     label: "Show OR/CR, insurance and franchise expiries as urgent within (days)",
     group: "Alerts",
     schema: z.number().int().min(0).max(365),
+  },
+  // --- M-D: cash book, dashboards, reports ---------------------------------
+  "cashbook.default_routing": {
+    label: "Cash book: default account (by payment method) for records without a payment method",
+    group: "Cash book",
+    schema: z.object({
+      payroll: zRoutableMethod,
+      loan_payment: zRoutableMethod,
+      investor_payout: zRoutableMethod,
+      commission_payout: zRoutableMethod,
+      commission_received: zRoutableMethod,
+      cash_advance: zRoutableMethod,
+      driver_bonus: zRoutableMethod,
+      check: zRoutableMethod,
+    }),
+  },
+  "dashboard.aging_bucket_days": {
+    label: "Aging buckets: upper day limits (e.g. 7, 15, 30 → 1–7, 8–15, 16–30, over 30)",
+    group: "Dashboards",
+    schema: z
+      .array(z.number().int().min(1).max(365))
+      .length(3)
+      .refine((a) => a[0] < a[1] && a[1] < a[2], "Limits must increase"),
+  },
+  "dashboard.rto_nearing_completion_installments": {
+    label: "RTO nearing completion: installments left (or fewer)",
+    group: "Dashboards",
+    schema: z.number().int().min(1).max(24),
+  },
+  "dashboard.upcoming_payables_days": {
+    label: "Upcoming payables window (days)",
+    group: "Dashboards",
+    schema: z.number().int().min(1).max(90),
+  },
+  "reports.daily_email_to": {
+    label: "Email the Daily Collection Report nightly to",
+    group: "Reports",
+    schema: z.array(z.email()).max(10),
   },
 } as const satisfies Record<
   string,

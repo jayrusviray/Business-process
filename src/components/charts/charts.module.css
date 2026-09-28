@@ -1,0 +1,55 @@
+/*
+ * Chart tokens (validated with the dataviz palette checker: blue/orange pass
+ * CVD and normal-vision separation and 3:1 contrast in both modes).
+ * Marks use --series-*; text uses the app's text colours, never a series colour.
+ */
+.viz {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --ink-muted: #898781;
+  --bar-track: #cde2fb;
+}
+
+@media (prefers-color-scheme: dark) {
+  .viz {
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --ink-muted: #898781;
+    --bar-track: #104281;
+  }
+}
+
+.chart {
+  height: 16rem;
+  width: 100%;
+}
+
+.tooltip {
+  border: 1px solid var(--color-border, rgba(11, 11, 11, 0.1));
+  background: var(--color-card, #fff);
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.key {
+  display: inline-block;
+  width: 0.75rem;
+  height: 2px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.swatch {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}

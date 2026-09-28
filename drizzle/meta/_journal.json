@@ -148,6 +148,20 @@
       "when": 1790523531248,
       "tag": "0020_imports_security",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790584204483,
+      "tag": "0021_cashbook",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790584212402,
+      "tag": "0022_cashbook_security",
+      "breakpoints": true
     }
   ]
 }

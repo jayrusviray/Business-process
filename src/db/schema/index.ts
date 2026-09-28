@@ -10,3 +10,4 @@ export * from "./ops";
 export * from "./crm";
 export * from "./applications";
 export * from "./imports";
+export * from "./cashbook";
