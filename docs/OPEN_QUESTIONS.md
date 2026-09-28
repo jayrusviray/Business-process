@@ -29,6 +29,11 @@ Answers still needed from the owner. Until then, each item runs on the default s
 | 16 | Company address, phone and email for the website footer and receipts. | Empty | `company.profile` |
 | 17 | Facebook Lead Ads: create a Meta app, pass app review for `leads_retrieval`, and give us the app secret and a page access token. | Off | `crm.meta_lead_ads_enabled` + `META_*` env |
 | 18 | Should new website leads be notified by SMS or email as well (needs a provider)? | In-app only | — |
+| 19 | Cash book: from which account are payroll, bank-loan payments, investor payouts and commission payouts paid, and where do platform/dealer commissions arrive? (Only affects which account's balance moves, not amounts.) | Cash advances and cash bonuses → Cash on hand; checks → BDO bank; the rest → "Other" until decided. A single record can be moved. | `cashbook.default_routing` |
+| 20 | Cash book: payroll is counted as money out on the pay date at gross + employer contributions (the payroll expense). Government remittances actually leave later. Is that acceptable, or should net pay and remittances be tracked separately? | Payroll expense on the pay date | — |
+| 21 | Do you have more than one bank account (e.g. BDO and BPI)? Payments only record "bank transfer" plus a free-text bank name. | One bank account (BDO) | Cash book → Accounts |
+| 22 | Who should get the nightly Daily Collection Report email, and from which sender address (needs a Resend account)? | Off | `reports.daily_email_to` + `RESEND_API_KEY`, `REPORTS_EMAIL_FROM` env |
+| 23 | Dashboard thresholds: aging buckets (1–7, 8–15, 16–30, 30+ days), "RTO nearing completion" (3 installments left), upcoming payables window (14 days). | As listed | `dashboard.*` |
 
 ## Where the spec and the owner disagree
 
