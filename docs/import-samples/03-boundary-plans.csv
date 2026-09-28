@@ -1,0 +1,6 @@
+mobile,driver_name,plate_no,program,daily_rate,start_date,notes
+0917 555 1001,Ramil Bautista,NGA 1001,boundary,"1,000.00",,
+0917 555 1002,Jerome Villanueva,NGA 1003,boundary,850,,
+0917 555 1003,Arnel Garcia,NGA 1004,Boundary,850.00,,
+0917 555 1004,Christian Mendoza,NGA 1002,boundary-hulog,700,,Hulog: amortization is in the contracts file
+0917 555 1005,Mark Anthony Reyes,NGA 1008,RTO,750,,

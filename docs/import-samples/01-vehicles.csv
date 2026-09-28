@@ -1,0 +1,9 @@
+Plate No.,Make,Model,Year,Color,Type,Region,OR/CR Expiry,Insurance Expiry,Platforms,Acquisition Cost,Date Acquired,Funding,Status,Remarks
+NGA 1001,BYD,e6,2023,White,EV,NCR,03/31/2027,03/31/2027,inDrive,"1,650,000.00",04/15/2023,investor,available,Funded by Ramon Uy
+NGA 1002,BYD,e6,2023,White,Electric,NCR,03/31/2027,03/31/2027,inDrive,"1,650,000.00",04/15/2023,company,available,
+NGA 1003,Toyota,Vios,2022,Silver,Gas,NCR,12/31/2026,12/31/2026,inDrive,"780,000.00",06/01/2022,financed,available,BDO auto loan
+NGA 1004,Toyota,Vios,2022,Black,Gasoline,NCR,11/30/2026,11/30/2026,inDrive,"780,000.00",06/01/2022,company,available,
+nga-1005,Mitsubishi,Mirage G4,2021,Red,gas,Laguna,10/31/2026,10/31/2026,inDrive,"720,000.00",02/10/2021,investor,maintenance,Aircon repair
+NGA 1006,Toyota,Wigo,2021,Orange,ice,NCR,01/31/2027,01/31/2027,,"610,000.00",03/05/2021,company,available,
+NGA 1007,Nissan,Almera,2023,Gray,ice,Cavite,05/31/2027,05/31/2027,inDrive,"890,000.00",05/20/2023,company,retired,Sold 2026-08
+NGA 1008,BYD,Dolphin,2024,Blue,EV,NCR,07/31/2027,07/31/2027,inDrive,"1,398,000.00",07/12/2024,company,available,

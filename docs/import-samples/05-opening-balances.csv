@@ -1,0 +1,8 @@
+mobile,driver_name,account,amount,due_date,contract_no,notes
+0917 555 1001,Ramil Bautista,boundary,"2,000.00",09/29/2026,,Unpaid Sep 29-30
+0917 555 1002,Jerome Villanueva,boundary,-850.00,,,Advance paid on Sep 30
+0917 555 1003,Arnel Garcia,boundary,850,09/30/2026,,
+0917 555 1003,Arnel Garcia,costs,"3,500.00",09/20/2026,,Tire replacement (at cost)
+0917 555 1004,Christian Mendoza,boundary,"1,400.00",09/29/2026,,
+0917 555 1006,Joel Ramos,boundary,"12,600.00",07/31/2026,,Arrears when he stopped driving
+0917 555 1006,Joel Ramos,deposit,"5,000.00",07/31/2026,,Unpaid deposit
