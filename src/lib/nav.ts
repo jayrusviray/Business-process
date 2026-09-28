@@ -50,6 +50,7 @@ export const NAV: NavSection[] = [
       { href: "/app/investors", label: "Investors", roles: [A, F], phase: 6, description: "Investor revenue share computations, payouts and statements." },
       { href: "/app/expenses", label: "Expenses", roles: [A, F], phase: 6, description: "Operating expenses, recurring bills and budget vs actual." },
       { href: "/app/payroll", label: "Payroll", roles: [A, F], phase: 6, description: "Semi-monthly payroll, government deductions, 13th month and payslips." },
+      { href: "/app/cashbook", label: "Cash book", roles: [A, F], phase: 8, description: "Every inflow and outflow per account (cash, GCash, Maya, bank), running balances and monthly reconciliation." },
     ],
   },
   {
@@ -64,7 +65,7 @@ export const NAV: NavSection[] = [
   {
     title: "Insights",
     items: [
-      { href: "/app/m/reports", label: "Reports", roles: [A, F], phase: 8, description: "Collections, aging, profitability, payroll register and exports." },
+      { href: "/app/reports", label: "Reports", roles: [A, F, O, S, "documentation"], phase: 8, description: "Collections, aging, RTO, sales, CRM, expenses, payroll, commissions, investors, cash flow and vehicles. Excel, PDF and print." },
       { href: "/app/m/import", label: "Import", roles: [A], phase: 9, description: "Spreadsheet import with column mapping and dry run." },
     ],
   },

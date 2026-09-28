@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  collapseDriverPayments,
   compareCashRows,
+  signed,
   isNonOperating,
   monthEndsBetween,
   reconciliationVariance,
@@ -100,6 +102,27 @@ describe("summarizeFlows", () => {
     expect(isNonOperating("transfer_in")).toBe(true);
     expect(isNonOperating("opening_balance")).toBe(true);
     expect(isNonOperating("boundary")).toBe(false);
+  });
+});
+
+describe("collapseDriverPayments", () => {
+  it("one line per day/account/category at the last payment, keeping exact balances", () => {
+    const input = [
+      row({ entryDate: D("2026-09-01"), direction: "in", amount: pesos(700), category: "boundary" }),
+      row({ entryDate: D("2026-09-01"), direction: "out", amount: pesos(100), category: "expense", sourceType: "expense" }),
+      row({ entryDate: D("2026-09-01"), direction: "in", amount: pesos(650), category: "boundary" }),
+      row({ entryDate: D("2026-09-01"), direction: "in", amount: pesos(5_000), category: "rto" }),
+      row({ entryDate: D("2026-09-02"), direction: "in", amount: pesos(700), category: "boundary" }),
+    ];
+    const { rows: withBal } = withRunningBalances(new Map(), input);
+    const out = collapseDriverPayments(withBal);
+    expect(out.map((r) => [r.entryDate, r.category, r.amount, r.count, r.balanceAfter])).toEqual([
+      ["2026-09-01", "expense", pesos(100), 1, pesos(600)],
+      ["2026-09-01", "boundary", pesos(1_350), 2, pesos(1_250)],
+      ["2026-09-01", "rto", pesos(5_000), 1, pesos(6_250)],
+      ["2026-09-02", "boundary", pesos(700), 1, pesos(6_950)],
+    ]);
+    expect(out.reduce((s, r) => s + signed(r), ZERO)).toBe(pesos(6_950));
   });
 });
 

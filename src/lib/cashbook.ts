@@ -209,3 +209,32 @@ export function monthEndsBetween(from: IsoDate, to: IsoDate): IsoDate[] {
   }
   return out;
 }
+
+/**
+ * Display helper: with hundreds of driver payments a day, show one line per
+ * day, account and category ("Boundary · 482 payments"). Each collapsed line
+ * takes the position and running balance of its last payment, so the balances
+ * shown stay exact. Other rows are kept as they are. Input must be in book order.
+ */
+export function collapseDriverPayments<R extends CashRow & { balanceAfter: Centavos }>(rows: readonly R[]): (R & { count: number })[] {
+  const lastIndex = new Map<string, number>();
+  const groupKey = (r: R) => `${r.entryDate}|${r.accountId ?? UNASSIGNED}|${r.category}`;
+  rows.forEach((r, i) => {
+    if (r.sourceType === "payment") lastIndex.set(groupKey(r), i);
+  });
+  const sums = new Map<string, { amount: Centavos; count: number }>();
+  const out: (R & { count: number })[] = [];
+  rows.forEach((r, i) => {
+    if (r.sourceType !== "payment") {
+      out.push({ ...r, count: 1 });
+      return;
+    }
+    const k = groupKey(r);
+    const s = sums.get(k) ?? { amount: ZERO, count: 0 };
+    s.amount += r.amount;
+    s.count += 1;
+    sums.set(k, s);
+    if (lastIndex.get(k) === i) out.push({ ...r, amount: s.amount, count: s.count });
+  });
+  return out;
+}
