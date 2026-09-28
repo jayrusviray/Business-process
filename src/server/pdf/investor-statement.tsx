@@ -41,7 +41,9 @@ export type InvestorStatementLine = {
 export async function investorStatementLines(tx: Tx, input: { investorId?: string | null; from: IsoDate; to: IsoDate }): Promise<InvestorStatementLine[]> {
   return tx.execute<InvestorStatementLine>(sql`
     SELECT p.investor_id, i.name AS investor, p.month::text, v.plate_no,
-      (SELECT d.first_name || ' ' || d.last_name FROM public.drivers d WHERE d.id = p.driver_id) AS driver,
+      -- Investors can't read driver records (RLS): they see "Assigned driver" instead of a name.
+      CASE WHEN p.driver_id IS NULL THEN NULL
+        ELSE COALESCE((SELECT d.first_name || ' ' || d.last_name FROM public.drivers d WHERE d.id = p.driver_id), 'Assigned driver') END AS driver,
       p.daily_rate_centavos::text AS daily_rate, p.boundary_days, p.monthly_amortization_centavos::text AS amortization,
       p.computed_centavos::text AS computed, p.payable_centavos::text AS payable, p.status::text, p.paid_on::text, p.reference
     FROM public.investor_payouts p JOIN public.investors i ON i.id = p.investor_id JOIN public.vehicles v ON v.id = p.vehicle_id

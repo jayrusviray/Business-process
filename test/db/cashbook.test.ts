@@ -82,14 +82,14 @@ afterAll(async () => {
 
 describe("cash book read model", () => {
   it("routes each record to the account of its payment method; voided rows never count", async () => {
-    const cash = await pay(700, D("2025-02-03"));
-    const gcash = await pay(1_400, D("2025-02-03"), "gcash");
-    const voided = await pay(700, D("2025-02-04"));
+    const cash = await pay(700, D("2025-01-13"));
+    const gcash = await pay(1_400, D("2025-01-13"), "gcash");
+    const voided = await pay(700, D("2025-01-14"));
     await withUserTx(as(finance), (tx) => voidPayment(tx, { paymentId: voided, reason: "wrong driver", voidedBy: finance }));
     const cat = (await sql`SELECT id FROM public.expense_categories WHERE name = 'Utilities'`)[0].id;
     const [exp, badExp] = await withUserTx(as(finance), async (tx) => [
-      await recordExpense(tx, { categoryId: cat, description: "Meralco", amount: pesos(2_000), expenseDate: D("2025-02-05"), paidVia: "gcash" }),
-      await recordExpense(tx, { categoryId: cat, description: "Duplicate", amount: pesos(2_000), expenseDate: D("2025-02-05"), paidVia: "cash" }),
+      await recordExpense(tx, { categoryId: cat, description: "Meralco", amount: pesos(2_000), expenseDate: D("2025-01-15"), paidVia: "gcash" }),
+      await recordExpense(tx, { categoryId: cat, description: "Duplicate", amount: pesos(2_000), expenseDate: D("2025-01-15"), paidVia: "cash" }),
     ]);
     await withUserTx(as(finance), (tx) => voidExpense(tx, badExp, "entered twice", finance));
     for (const id of [exp, badExp]) mine.add(id);
@@ -108,8 +108,8 @@ describe("cash book read model", () => {
         clientRequestId: crypto.randomUUID(),
         driverId,
         method: "cash",
-        receivedAt: new Date("2025-02-10T02:00:00Z"),
-        businessDate: D("2025-02-10"),
+        receivedAt: new Date("2025-01-20T02:00:00Z"),
+        businessDate: D("2025-01-20"),
         collectorId: finance,
         lines: [
           { accountId: boundaryAcc, amount: pesos(700) },
@@ -254,5 +254,71 @@ describe("open charges (fast path for dashboards)", () => {
   it("drivers only see their own open charges", async () => {
     const [n] = await asUser(sales, (tx) => tx`SELECT count(*)::int AS n FROM app.open_charges(NULL)`);
     expect(n.n).toBe(0);
+  });
+});
+
+describe("reports on the fixture", () => {
+  async function run(key: string, sp: Record<string, string>, user = finance) {
+    const { findReport } = await import("@/server/reports/registry");
+    const { resolveContext } = await import("@/server/reports/types");
+    const { runReport } = await import("@/server/reports/run");
+    const def = findReport(key)!;
+    return withUserTx(as(user), async (tx) => {
+      const { ctx } = await resolveContext(tx, def, sp, { today: TODAY, userId: user, roles: ["finance"] });
+      return runReport(tx, def, ctx);
+    });
+  }
+
+  it("daily collection: due vs paid per driver and day (reversed charges and voided payments excluded)", async () => {
+    const doc = await run("daily-collection", { from: "2025-07-01", to: "2025-07-06" });
+    const mineRows = doc.rows.filter((r) => r.driver === "Book, Cash").map((r) => [r.date, r.expected, r.paid, r.variance]);
+    expect(mineRows).toEqual([
+      ["2025-07-01", pesos(2_000), BigInt(0), -pesos(2_000)],
+      ["2025-07-02", pesos(2_000), BigInt(0), -pesos(2_000)],
+      ["2025-07-03", pesos(2_000), BigInt(0), -pesos(2_000)],
+      ["2025-07-05", pesos(2_000), BigInt(0), -pesos(2_000)],
+      ["2025-07-06", BigInt(0), pesos(1_000), pesos(1_000)],
+    ]);
+  });
+
+  it("cash flow by category and sales by line agree with the cash book", async () => {
+    const flow = await run("cash-flow", { from: "2025-01-01", to: "2025-01-31", by: "category" });
+    const cat = Object.fromEntries(flow.rows.map((r) => [r.group, [r.in, r.out]]));
+    expect(cat["Boundary"]).toEqual([pesos(2_800), BigInt(0)]);
+    expect(cat["Driver costs & deposits"]).toEqual([pesos(300), BigInt(0)]);
+    expect(cat["Expenses"]).toEqual([BigInt(0), pesos(2_000)]);
+    expect(flow.totals).toMatchObject({ in: pesos(3_100), out: pesos(2_000), net: pesos(1_100) });
+
+    const sales = await run("sales", { from: "2025-01-01", to: "2025-01-31", by: "month" });
+    expect(sales.rows).toHaveLength(1);
+    expect(sales.rows[0]).toMatchObject({ period: "2025-01", boundary: pesos(2_800), driver_costs: pesos(300), total: pesos(3_100) });
+  });
+
+  it("collection summary by program: due vs collected per account", async () => {
+    const doc = await run("collection-summary", { from: "2025-07-01", to: "2025-07-06", by: "account" });
+    const b = doc.rows.find((r) => r.group === "Boundary")!;
+    // Other test files post nothing in July 2025, so these are exactly the fixture's numbers.
+    expect(b).toMatchObject({ expected: pesos(8_000), collected: pesos(1_000), rate: 1250 });
+  });
+
+  it("investor statement: finance sees every investor; an investor only their own, and gets a PDF", async () => {
+    const invUser = await createUser("CB Investor", ["investor"]);
+    const [inv] = await sql`INSERT INTO public.investors (name, profile_id) VALUES ('CB Partner', ${invUser}) RETURNING id`;
+    const [other] = await sql`INSERT INTO public.investors (name) VALUES ('CB Other') RETURNING id`;
+    for (const [i, share] of [[inv.id, 1540000], [other.id, 990000]] as const) {
+      const [v] = await sql`INSERT INTO public.vehicles (plate_no, make, model, investor_id, funding_source)
+        VALUES (${`CBI ${Math.floor(Math.random() * 1e6)}`}, 'Toyota', 'Vios', ${i}, 'investor') RETURNING id`;
+      await sql`INSERT INTO public.investor_payouts (month, vehicle_id, investor_id, daily_rate_centavos, monthly_amortization_centavos, boundary_days, computed_centavos, payable_centavos, status, paid_on)
+        VALUES ('2025-08-01', ${v.id}, ${i}, 70000, 0, 22, ${share}, ${share}, 'paid', '2025-09-05')`;
+    }
+    const all = await run("investor-statement", { from: "2025-08-01", to: "2025-08-31" });
+    expect(all.rows.map((r) => r.investor)).toContain("CB Partner");
+    const { investorStatementLines, renderInvestorStatementPdf } = await import("@/server/pdf/investor-statement");
+    const own = await withUserTx(as(invUser), (tx) => investorStatementLines(tx, { from: D("2025-08-01"), to: D("2025-08-31") }));
+    expect(new Set(own.map((l) => l.investor))).toEqual(new Set(["CB Partner"]));
+    const pdf = await withUserTx(as(invUser), (tx) => renderInvestorStatementPdf(tx, { investorId: inv.id, from: D("2025-08-01"), to: D("2025-08-31") }));
+    expect(pdf?.subarray(0, 4).toString()).toBe("%PDF");
+    // Leave no investor-funded vehicles behind for other test files' payout runs.
+    await sql`UPDATE public.vehicles SET investor_id = NULL, funding_source = 'company' WHERE plate_no LIKE 'CBI %'`;
   });
 });

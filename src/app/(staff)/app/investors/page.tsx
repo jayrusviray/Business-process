@@ -13,7 +13,7 @@ import { Table, Td, Th } from "@/components/ui/table";
 import { withUserTx } from "@/db/client";
 import { investors, vehicles } from "@/db/schema";
 import { requireRole } from "@/lib/auth/session";
-import { addMonths, businessToday } from "@/lib/dates";
+import { addMonths, businessToday, endOfMonth } from "@/lib/dates";
 import { assignVehicleAction, generatePayoutsAction, payPayoutAction, saveInvestorAction } from "./actions";
 
 export const metadata = { title: "Investors" };
@@ -53,7 +53,12 @@ export default async function InvestorsPage({ searchParams }: PageProps<"/app/in
               <Button type="submit" variant="outline">{data.payouts.length ? "Recompute drafts" : "Compute this month"}</Button>
             </ActionForm>
           </div>
-          <CardDescription>The driver is the one on the vehicle at month end (or last during the month). Paid rows never change.</CardDescription>
+          <CardDescription>
+            The driver is the one on the vehicle at month end (or last during the month). Paid rows never change.{" "}
+            <a className="underline" href={`/app/reports/investor-statement/export?format=pdf&from=${month}&to=${endOfMonth(month)}`} target="_blank">Statements for this month (PDF)</a>
+            {" · "}
+            <a className="underline" href={`/app/reports/investor-statement?from=${month}&to=${endOfMonth(month)}`}>per investor</a>
+          </CardDescription>
         </CardHeader>
         <Table>
           <thead><tr><Th>Investor</Th><Th>Vehicle / driver</Th><Th className="text-right">Daily × days</Th><Th className="text-right">Less amortization</Th><Th className="text-right">Share</Th><Th>Status</Th></tr></thead>

@@ -83,6 +83,21 @@ export default async function PortalPage({ searchParams }: PageProps<"/portal">)
               </ul>
             </CardContent>
           </Card>
+          {investor.payouts.length ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly statements</CardTitle>
+                <CardDescription>PDF per month: each vehicle&apos;s share and what was paid.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-2">
+                {[...new Set(investor.payouts.map((p) => p.month.slice(0, 7)))].map((m) => (
+                  <Button key={m} asChild variant="outline" size="lg">
+                    <a href={`/portal/investor-statement?month=${m}`} target="_blank">Statement {m} (PDF)</a>
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
         </>
       ) : !o ? (
         <Card>
