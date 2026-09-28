@@ -16,7 +16,8 @@
     "db:seed:dev": "tsx scripts/seed-dev.ts",
     "import:files": "tsx scripts/import-files.ts",
     "db:seed:demo": "tsx scripts/seed-demo.ts",
-    "admin:bootstrap": "tsx scripts/bootstrap-admin.ts"
+    "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.3.3",
