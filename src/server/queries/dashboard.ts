@@ -145,10 +145,14 @@ export async function rtoSummary(tx: Tx, today: IsoDate) {
 // ---------------------------------------------------------------------------
 export type Payable = { kind: "loan" | "bill" | "payroll"; label: string; due: IsoDate; amount: Centavos; overdue: boolean; href: string };
 
-export async function upcomingPayables(tx: Tx, today: IsoDate): Promise<{ items: Payable[]; days: number }> {
-  const days = await getSetting(tx, "dashboard.upcoming_payables_days");
-  const until = addDays(today, days);
-  const [lines, paid, payroll, billsThis, billsNext] = await Promise.all([
+export type LoanDue = { loan_id: string; lender: string; plate_no: string; due_date: string; amount_due: string; overdue: boolean };
+
+/**
+ * Unpaid loan installments due by `until` (incl. overdue) for every active loan,
+ * in two queries. Same oldest-first application as the loan page (applyLoanPayments).
+ */
+export async function loanDues(tx: Tx, today: IsoDate, until: IsoDate): Promise<LoanDue[]> {
+  const [lines, paid] = await Promise.all([
     tx.execute<{ loan_id: string; lender: string; plate: string; seq: number; due_date: string; opening: string; principal: string; interest: string; payment: string; closing: string }>(sql`
       SELECT l.id AS loan_id, l.lender, v.plate_no AS plate, s.seq, s.due_date::text, s.opening_balance_centavos::text AS opening,
         s.principal_centavos::text AS principal, s.interest_centavos::text AS interest, s.payment_centavos::text AS payment, s.closing_balance_centavos::text AS closing
@@ -157,15 +161,8 @@ export async function upcomingPayables(tx: Tx, today: IsoDate): Promise<{ items:
     tx.execute<{ loan_id: string; total: string }>(sql`
       SELECT lp.loan_id, SUM(lp.amount_centavos)::text AS total FROM public.loan_payments lp
       JOIN public.vehicle_loans l ON l.id = lp.loan_id WHERE l.status = 'active' GROUP BY 1`),
-    tx.execute<{ id: string; period_start: string; period_end: string; pay_date: string; net: string }>(sql`
-      SELECT p.id, p.period_start::text, p.period_end::text, p.pay_date::text,
-        COALESCE((SELECT SUM(l.net_pay_centavos) FROM public.payroll_lines l WHERE l.period_id = p.id), 0)::text AS net
-      FROM public.payroll_periods p WHERE p.status <> 'paid' AND p.pay_date <= ${until}::date ORDER BY p.pay_date`),
-    recurringForMonth(tx, startOfMonth(today)),
-    until >= addMonths(startOfMonth(today), 1) ? recurringForMonth(tx, addMonths(startOfMonth(today), 1)) : Promise.resolve([]),
   ]);
-  const items: Payable[] = [];
-  // Same oldest-first application as the loan page (applyLoanPayments), for all loans at once.
+  const out: LoanDue[] = [];
   const byLoan = new Map<string, (typeof lines)[number][]>();
   for (const l of lines) byLoan.set(l.loan_id, [...(byLoan.get(l.loan_id) ?? []), l]);
   for (const [loanId, ls] of byLoan) {
@@ -181,9 +178,32 @@ export async function upcomingPayables(tx: Tx, today: IsoDate): Promise<{ items:
     const total = BigInt(paid.find((p) => p.loan_id === loanId)?.total ?? "0");
     for (const st of applyLoanPayments(sched, total, today)) {
       if (st.status === "paid" || st.dueDate > until) continue;
-      items.push({ kind: "loan", label: `${ls[0].plate} · ${ls[0].lender}`, due: st.dueDate, amount: st.payment - st.paid, overdue: st.overdue, href: `/app/loans/${loanId}` });
+      out.push({ loan_id: loanId, lender: ls[0].lender, plate_no: ls[0].plate, due_date: st.dueDate, amount_due: (st.payment - st.paid).toString(), overdue: st.overdue });
     }
   }
+  return out.sort((a, b) => (a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0));
+}
+
+export async function upcomingPayables(tx: Tx, today: IsoDate): Promise<{ items: Payable[]; days: number }> {
+  const days = await getSetting(tx, "dashboard.upcoming_payables_days");
+  const until = addDays(today, days);
+  const [loans, payroll, billsThis, billsNext] = await Promise.all([
+    loanDues(tx, today, until),
+    tx.execute<{ id: string; period_start: string; period_end: string; pay_date: string; net: string }>(sql`
+      SELECT p.id, p.period_start::text, p.period_end::text, p.pay_date::text,
+        COALESCE((SELECT SUM(l.net_pay_centavos) FROM public.payroll_lines l WHERE l.period_id = p.id), 0)::text AS net
+      FROM public.payroll_periods p WHERE p.status <> 'paid' AND p.pay_date <= ${until}::date ORDER BY p.pay_date`),
+    recurringForMonth(tx, startOfMonth(today)),
+    until >= addMonths(startOfMonth(today), 1) ? recurringForMonth(tx, addMonths(startOfMonth(today), 1)) : Promise.resolve([]),
+  ]);
+  const items: Payable[] = loans.map((l) => ({
+    kind: "loan" as const,
+    label: `${l.plate_no} · ${l.lender}`,
+    due: l.due_date as IsoDate,
+    amount: BigInt(l.amount_due),
+    overdue: l.overdue,
+    href: `/app/loans/${l.loan_id}`,
+  }));
   for (const b of [...billsThis, ...billsNext]) {
     if (b.paid_expense_id || (b.due_date as IsoDate) > until) continue;
     items.push({ kind: "bill", label: `${b.vendor} · ${b.category}`, due: b.due_date as IsoDate, amount: BigInt(b.amount), overdue: b.due_date < today, href: "/app/expenses" });

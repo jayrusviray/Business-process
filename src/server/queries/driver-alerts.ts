@@ -18,6 +18,8 @@ export type DriverAlerts = { rows: DriverAlert[]; unpaidDaysAt: number; balanceA
  * above a threshold, or a licence expiring soon. Payments are applied oldest
  * due first, so the unpaid boundary days are always the most recent ones: the
  * count of unpaid days is the run of consecutive unpaid days up to today.
+ * Unpaid (not fully paid) charges come from app.open_charges, which applies the
+ * same rule as v_charge_status but only visits accounts that owe (M-D performance).
  */
 export async function driverAlerts(tx: Tx, today: IsoDate): Promise<DriverAlerts> {
   const [unpaidDaysAt, balanceAt, licenseDays] = await Promise.all([
@@ -28,11 +30,11 @@ export async function driverAlerts(tx: Tx, today: IsoDate): Promise<DriverAlerts
   const licenseBy = addDays(today, licenseDays);
   const rows = await tx.execute<DriverAlert>(sql`
     WITH unpaid AS (
-      SELECT driver_id, COUNT(*)::int AS days FROM public.v_charge_status
-      WHERE entry_type = 'boundary_charge' AND status <> 'paid' AND due_date <= ${today}::date
+      SELECT driver_id, COUNT(*)::int AS days FROM app.open_charges(NULL)
+      WHERE entry_type = 'boundary_charge' AND due_date <= ${today}::date
       GROUP BY driver_id
     ), bal AS (
-      SELECT driver_id, SUM(balance_centavos)::bigint AS total FROM public.v_account_balances GROUP BY driver_id
+      SELECT driver_id, SUM(amount_centavos)::bigint AS total FROM public.ledger_entries GROUP BY driver_id
     )
     SELECT d.id AS driver_id, d.last_name || ', ' || d.first_name AS name,
       COALESCE(u.days, 0) AS unpaid_days, COALESCE(b.total, 0)::text AS balance, d.license_expiry::text
