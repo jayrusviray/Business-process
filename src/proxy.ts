@@ -9,6 +9,7 @@ const PUBLIC_PREFIXES = [
   "/privacy",
   "/api/public",
   "/api/cron",
+  "/api/health",
   "/api/webhooks",
   "/robots.txt",
   "/sitemap.xml",
