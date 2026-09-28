@@ -257,6 +257,26 @@ describe("open charges (fast path for dashboards)", () => {
   });
 });
 
+describe("nightly report email", () => {
+  it("does nothing until configured, then sends the day's report with the Excel attached", async () => {
+    const { withSystemTx } = await import("./app");
+    const { sendDailyCollectionEmail } = await import("@/server/email/daily-report");
+    const sent: { to: string[]; subject: string; attachments?: { filename: string }[] }[] = [];
+    const fake = { name: "fake", configured: true, send: async (m: (typeof sent)[number]) => (sent.push(m), { status: "sent" as const }) };
+    expect((await withSystemTx("test", (tx) => sendDailyCollectionEmail(tx, D("2025-07-06"), fake))).status).toBe("skipped");
+    await sql`UPDATE public.app_settings SET value = '["owner@example.com"]' WHERE key = 'reports.daily_email_to'`;
+    try {
+      const r = await withSystemTx("test", (tx) => sendDailyCollectionEmail(tx, D("2025-07-06"), fake));
+      expect(r.status).toBe("sent");
+      expect(sent[0].to).toEqual(["owner@example.com"]);
+      expect(sent[0].subject).toMatch(/2025-07-06/);
+      expect(sent[0].attachments?.[0].filename).toBe("daily-collection-2025-07-06.xlsx");
+    } finally {
+      await sql`UPDATE public.app_settings SET value = '[]' WHERE key = 'reports.daily_email_to'`;
+    }
+  });
+});
+
 describe("reports on the fixture", () => {
   async function run(key: string, sp: Record<string, string>, user = finance) {
     const { findReport } = await import("@/server/reports/registry");
