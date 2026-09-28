@@ -159,3 +159,20 @@ export function smsHref(phone: string, body: string): string {
 export function smsSegments(body: string): number {
   return body.length <= 160 ? 1 : Math.ceil(body.length / 153);
 }
+
+export type QuietHours = { start: string; end: string };
+
+const manilaClock = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Manila", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+/**
+ * True when `now` (Manila time) falls in the quiet window [start, end).
+ * The window may wrap past midnight (21:00 → 07:00). start = end means no quiet hours.
+ */
+export function isQuietTime(now: Date, q: QuietHours): boolean {
+  const toMin = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+  const t = toMin(manilaClock.format(now));
+  const s = toMin(q.start);
+  const e = toMin(q.end);
+  if (s === e) return false;
+  return s < e ? t >= s && t < e : t >= s || t < e;
+}

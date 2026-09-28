@@ -1,0 +1,21 @@
+/*
+ * TransRev brand colours — the ONE place to change them once the logo and
+ * brand guide arrive (docs/OPEN_QUESTIONS.md #12). Placeholder values.
+ * Used by the staff app (primary) and the public website (ink, accent).
+ */
+:root {
+  --brand: oklch(0.45 0.16 255); /* buttons, links */
+  --brand-foreground: oklch(0.99 0 0);
+  --brand-ink: oklch(0.24 0.06 258); /* website hero and footer background */
+  --brand-ink-foreground: oklch(0.97 0.01 250);
+  --brand-accent: oklch(0.8 0.15 80); /* website highlights */
+  --brand-accent-foreground: oklch(0.22 0.04 70);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: oklch(0.68 0.14 255);
+    --brand-foreground: oklch(0.15 0.01 260);
+    --brand-ink: oklch(0.2 0.05 258);
+  }
+}

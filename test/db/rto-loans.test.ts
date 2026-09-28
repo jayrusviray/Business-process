@@ -17,7 +17,7 @@ let finance: string, ops: string, driverUser: string;
 async function setup(opts: { downPayment?: number; price?: number; start?: string; firstDue?: string; profileId?: string } = {}) {
   const ids = await withUserTx(as(ops), async (tx) => {
     const [d] = await tx.insert(drivers).values({ firstName: "R", lastName: `T ${crypto.randomUUID().slice(0, 5)}`, phone: "09175550000", status: "active", profileId: opts.profileId }).returning({ id: drivers.id });
-    const [v] = await tx.insert(vehicles).values({ plateNo: `RTO ${Math.floor(Math.random() * 1e6)}`, make: "BYD", model: "Dolphin", isEv: true }).returning({ id: vehicles.id });
+    const [v] = await tx.insert(vehicles).values({ plateNo: `RTO ${Math.floor(Math.random() * 1e6)}`, make: "BYD", model: "Dolphin", powertrain: "ev" }).returning({ id: vehicles.id });
     return { d: d.id, v: v.id };
   });
   const contractId = await withUserTx(as(finance), (tx) =>

@@ -1,7 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PREFIXES = ["/login", "/auth", "/school", "/apply", "/api/public", "/api/cron"];
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/auth",
+  "/school",
+  "/apply",
+  "/privacy",
+  "/api/public",
+  "/api/cron",
+  "/api/health",
+  "/api/webhooks",
+  "/robots.txt",
+  "/sitemap.xml",
+];
 
 /** Refreshes the Supabase session cookie and bounces signed-out users to /login. */
 export async function proxy(request: NextRequest) {
@@ -27,7 +39,11 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   const path = request.nextUrl.pathname;
-  const isPublic = path === "/" || PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+  const isPublic =
+    path === "/" ||
+    // Generated share image: /opengraph-image-<hash>
+    path.startsWith("/opengraph-image") ||
+    PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
 
   if (!data?.claims && !isPublic) {
     const url = request.nextUrl.clone();

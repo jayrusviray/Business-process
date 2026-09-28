@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** A payment method that a cash account can be tied to (cash book routing). */
+const zRoutableMethod = z.enum(["cash", "gcash", "maya", "bank_transfer", "other"]);
+
 /**
  * Every key in `app_settings` must be declared here. Writes are validated
  * against `schema`; a DB test asserts seeded values parse.
@@ -126,6 +129,97 @@ export const settingsRegistry = {
     label: "SMS sender name",
     group: "Messaging",
     schema: z.string().min(1).max(11).nullable(),
+  },
+  "portal.max_pending_proofs": {
+    label: "Max payment proofs a driver can have waiting for verification",
+    group: "Collections",
+    schema: z.number().int().min(1).max(50),
+  },
+  "alerts.consecutive_unpaid_days": {
+    label: "Flag drivers with this many unpaid boundary days in a row",
+    group: "Alerts",
+    schema: z.number().int().min(1).max(365),
+  },
+  "alerts.balance_threshold_centavos": {
+    label: "Flag drivers whose total balance reaches (centavos)",
+    group: "Alerts",
+    schema: z.number().int().min(0),
+  },
+  "alerts.license_expiry_days": {
+    label: "Flag licences expiring within (days)",
+    group: "Alerts",
+    schema: z.number().int().min(0).max(365),
+  },
+  "reminders.quiet_hours": {
+    label: "No reminders between (Manila time)",
+    group: "Messaging",
+    schema: z.object({
+      start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+      end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    }),
+  },
+  "crm.inquiry_rate_limit_per_hour": {
+    label: "Website inquiries accepted per visitor per hour",
+    group: "CRM & website",
+    schema: z.number().int().min(1).max(100),
+  },
+  "crm.meta_lead_ads_enabled": {
+    label: "Accept Facebook Lead Ads (Meta webhook)",
+    group: "CRM & website",
+    schema: z.boolean(),
+  },
+  "site.facebook_url": {
+    label: "Facebook page URL",
+    group: "CRM & website",
+    schema: z.url(),
+  },
+  "alerts.document_expiry_warn_days": {
+    label: "Warn about OR/CR, insurance and franchise expiries within (days)",
+    group: "Alerts",
+    schema: z.number().int().min(1).max(365),
+  },
+  "alerts.document_expiry_urgent_days": {
+    label: "Show OR/CR, insurance and franchise expiries as urgent within (days)",
+    group: "Alerts",
+    schema: z.number().int().min(0).max(365),
+  },
+  // --- M-D: cash book, dashboards, reports ---------------------------------
+  "cashbook.default_routing": {
+    label: "Cash book: default account (by payment method) for records without a payment method",
+    group: "Cash book",
+    schema: z.object({
+      payroll: zRoutableMethod,
+      loan_payment: zRoutableMethod,
+      investor_payout: zRoutableMethod,
+      commission_payout: zRoutableMethod,
+      commission_received: zRoutableMethod,
+      cash_advance: zRoutableMethod,
+      driver_bonus: zRoutableMethod,
+      check: zRoutableMethod,
+    }),
+  },
+  "dashboard.aging_bucket_days": {
+    label: "Aging buckets: upper day limits (e.g. 7, 15, 30 → 1–7, 8–15, 16–30, over 30)",
+    group: "Dashboards",
+    schema: z
+      .array(z.number().int().min(1).max(365))
+      .length(3)
+      .refine((a) => a[0] < a[1] && a[1] < a[2], "Limits must increase"),
+  },
+  "dashboard.rto_nearing_completion_installments": {
+    label: "RTO nearing completion: installments left (or fewer)",
+    group: "Dashboards",
+    schema: z.number().int().min(1).max(24),
+  },
+  "dashboard.upcoming_payables_days": {
+    label: "Upcoming payables window (days)",
+    group: "Dashboards",
+    schema: z.number().int().min(1).max(90),
+  },
+  "reports.daily_email_to": {
+    label: "Email the Daily Collection Report nightly to",
+    group: "Reports",
+    schema: z.array(z.email()).max(10),
   },
 } as const satisfies Record<
   string,

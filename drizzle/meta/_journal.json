@@ -92,6 +92,76 @@
       "when": 1790515902167,
       "tag": "0012_office_security_seed",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790519000123,
+      "tag": "0013_ops_gaps",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790519058413,
+      "tag": "0014_ops_gaps_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790520150599,
+      "tag": "0015_crm",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790520207614,
+      "tag": "0016_crm_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790521317267,
+      "tag": "0017_applications",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790521430156,
+      "tag": "0018_applications_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790523521132,
+      "tag": "0019_imports",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790523531248,
+      "tag": "0020_imports_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790584204483,
+      "tag": "0021_cashbook",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790584212402,
+      "tag": "0022_cashbook_security",
+      "breakpoints": true
     }
   ]
 }

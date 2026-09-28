@@ -67,6 +67,8 @@ export type NewContractInput = {
   firstDueDate: IsoDate;
   /** Amount the driver already paid toward the vehicle before go-live (posted as an opening credit). */
   paidBeforeGoLive?: Centavos;
+  /** Idempotency key for that opening credit (spreadsheet import: `import:{batch}:{line}`). */
+  openingCreditKey?: string;
   notes?: string;
 };
 
@@ -108,6 +110,7 @@ export async function createRtoContract(tx: Tx, input: NewContractInput, today: 
       businessDate: today,
       reason: "Paid toward the vehicle before the system went live",
       memo: `Opening credit – ${contract.contractNo}`,
+      idempotencyKey: input.openingCreditKey ?? null,
     });
   }
   await postAmortizationThrough(tx, contract, today);

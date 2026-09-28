@@ -22,7 +22,8 @@ export default async function CollectionsPage({ searchParams }: PageProps<"/app/
   const session = await requireRole(["owner_admin", "finance", "operations"]);
   const sp = await searchParams;
   const date = typeof sp.date === "string" && isIsoDate(sp.date) ? sp.date : businessToday();
-  const { rows, expected } = await withUserTx(session.claims, async (tx) => ({
+  const { rows, expected, proofs } = await withUserTx(session.claims, async (tx) => ({
+    proofs: await tx.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM public.payment_proofs WHERE status = 'pending'`),
     rows: await tx.execute<Row>(sql`
       SELECT p.id, p.receipt_no, p.driver_id, d.last_name || ', ' || d.first_name AS driver_name, p.amount_centavos::text,
         p.method, p.reference_no, COALESCE(NULLIF(c.full_name, ''), c.email) AS collector,
@@ -37,6 +38,7 @@ export default async function CollectionsPage({ searchParams }: PageProps<"/app/
       SELECT COUNT(*)::text AS charged, COALESCE(SUM(amount_centavos), 0)::text AS due
       FROM public.v_charge_status WHERE entry_type = 'boundary_charge' AND due_date = ${date}::date`),
   }));
+  const pendingProofs = proofs[0]?.n ?? 0;
   const live = rows.filter((r) => !r.voided);
   const total = live.reduce((s, r) => s + BigInt(r.amount_centavos), BigInt(0));
   const byMethod = new Map<string, bigint>();
@@ -51,6 +53,17 @@ export default async function CollectionsPage({ searchParams }: PageProps<"/app/
           <div className="flex flex-wrap gap-2">
             <Button asChild>
               <Link href="/app/collections/new">Record payment</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/app/collections/today">Collect today</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/app/collections/proofs">
+                Payment proofs{pendingProofs > 0 ? <Badge variant="warning" className="ml-1">{pendingProofs}</Badge> : null}
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/app/collections/close">Close the day</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/app/collections/bulk">Bulk entry</Link>

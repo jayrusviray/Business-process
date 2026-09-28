@@ -13,17 +13,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input, Select } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/table";
 import { withUserTx } from "@/db/client";
-import { boundaryPlans, drivers, holidays, payments, paymentVoids, vehicleAssignments, vehicles } from "@/db/schema";
+import { boundaryPlans, driverPlatformAccounts, drivers, holidays, payments, paymentVoids, vehicleAssignments, vehicles } from "@/db/schema";
 import { hasAnyRole } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { addDays, businessToday, endOfMonth, type IsoDate } from "@/lib/dates";
 import { formatPeso, toDecimalString } from "@/lib/money";
 import { getDriverOverview } from "@/server/queries/driver-overview";
 import {
+  addPlatformAccountAction,
   adjustmentAction,
   assignVehicleAction,
   endPlanAction,
   portalAccessAction,
+  removePlatformAccountAction,
   postDriverChargeAction,
   reverseEntryAction,
   startPlanAction,
@@ -31,6 +33,7 @@ import {
   updateDriver,
 } from "../actions";
 import { DriverForm, STATUS_VARIANT } from "../driver-form";
+import { LegacyPaymentsCard } from "./legacy-payments";
 
 export const metadata = { title: "Driver" };
 
@@ -87,10 +90,11 @@ export default async function DriverPage({ params, searchParams }: PageProps<"/a
       .orderBy(desc(payments.receivedAt))
       .limit(50);
     const overview = (await getDriverOverview(tx, id, today, month))!;
-    return { driver, plan, plans, assignment, available, statements: overview.statements, monthHolidays, pays, overview };
+    const platformAccounts = await tx.select().from(driverPlatformAccounts).where(eq(driverPlatformAccounts.driverId, id)).orderBy(asc(driverPlatformAccounts.platform));
+    return { driver, plan, plans, assignment, available, statements: overview.statements, monthHolidays, pays, overview, platformAccounts };
   });
   if (!data) notFound();
-  const { driver, plan, plans, assignment, available, statements, monthHolidays, pays, overview } = data;
+  const { driver, plan, plans, assignment, available, statements, monthHolidays, pays, overview, platformAccounts } = data;
 
   const boundary = statements.find((s) => s.account.kind === "boundary");
   const reversedIds = new Set(statements.flatMap((s) => s.entries.map((e) => e.reversesEntryId)).filter(Boolean));
@@ -135,6 +139,35 @@ export default async function DriverPage({ params, searchParams }: PageProps<"/a
           </CardHeader>
           <CardContent>
             <RtoProgressCard o={overview} today={today} href={overview.rto ? `/app/rto/${overview.rto.contract.id}` : undefined} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Platform accounts</CardTitle>
+            <CardDescription>Ride-hailing accounts (e.g. inDrive) used for quota imports and activation.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 text-sm">
+            {platformAccounts.length === 0 ? <p className="text-muted-foreground">None yet.</p> : null}
+            {platformAccounts.map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-2">
+                <span>{a.platform} · <span className="font-mono">{a.accountRef}</span></span>
+                {canAssign ? (
+                  <ActionForm action={removePlatformAccountAction} inlineStatus>
+                    <input type="hidden" name="id" value={a.id} />
+                    <input type="hidden" name="driverId" value={driver.id} />
+                    <Button type="submit" variant="ghost" size="sm" aria-label={`Remove ${a.platform} ${a.accountRef}`}>Remove</Button>
+                  </ActionForm>
+                ) : null}
+              </div>
+            ))}
+            {canAssign ? (
+              <ActionForm action={addPlatformAccountAction} className="flex flex-wrap gap-2">
+                <input type="hidden" name="driverId" value={driver.id} />
+                <Input name="platform" defaultValue="inDrive" aria-label="Platform" className="w-28" required />
+                <Input name="accountRef" placeholder="Account ID" aria-label="Account ID" className="w-36 flex-1" required />
+                <Button type="submit" size="sm" variant="outline">Add</Button>
+              </ActionForm>
+            ) : null}
           </CardContent>
         </Card>
         <Card>
@@ -494,6 +527,8 @@ export default async function DriverPage({ params, searchParams }: PageProps<"/a
           </tbody>
         </Table>
       </Card>
+
+      <LegacyPaymentsCard claims={session.claims} driverId={driver.id} />
 
       <details className="mb-6">
         <summary className="cursor-pointer text-sm font-medium">Edit driver details</summary>

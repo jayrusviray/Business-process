@@ -19,6 +19,8 @@ export function friendlyError(e: unknown): string {
   if (/charges are already posted/.test(msg)) return "Charges are already posted past that date. Reverse them first.";
   if (/versioned/.test(msg)) return "Plans can't be edited. End this plan and start a new one.";
   if (/append-only/.test(msg)) return "Financial records can't be changed. Post a reversal or adjustment instead.";
+  if (/too many payment proofs/.test(msg)) return "You already have several payment proofs waiting. Please wait until the office checks them.";
+  if (/driver_platform_accounts_uq/.test(msg)) return "That platform account is already registered to a driver.";
   if (/duplicate key/.test(msg)) return "That record already exists.";
   console.error(e);
   return "Something went wrong. Nothing was saved.";

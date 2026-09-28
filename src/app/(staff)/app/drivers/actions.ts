@@ -1,15 +1,15 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { withUserTx } from "@/db/client";
-import { drivers } from "@/db/schema";
+import { driverPlatformAccounts, drivers } from "@/db/schema";
 import { businessToday } from "@/lib/dates";
 import { zIsoDate, zOptionalText, zPeso, zPhMobile } from "@/lib/validation";
 import { formObject, guarded, type ActionState } from "@/server/action";
-import { friendlyError } from "@/server/money/errors";
+import { friendlyError, MoneyRuleError } from "@/server/money/errors";
 import { assignVehicle, endBoundaryPlan, startBoundaryPlan, unassignVehicle } from "@/server/money/fleet";
 import { postAdjustment, postDriverCharge, reverseEntry } from "@/server/money/payments";
 import { requireRole } from "@/lib/auth/session";
@@ -166,5 +166,30 @@ export async function portalAccessAction(_: ActionState, formData: FormData): Pr
     }
     const r = await resetPortalPassword(s, driverId);
     return `Password reset. Login: ${r.phone} · New temporary password: ${r.password} (shown once).`;
+  });
+}
+
+export async function addPlatformAccountAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const obj = formObject(formData);
+  return guarded([A, O], async (s) => {
+    const input = z
+      .object({ driverId: z.guid(), platform: z.string().trim().min(2, "Platform name is required").max(40), accountRef: z.string().trim().min(1, "Account ID is required").max(80) })
+      .safeParse(obj);
+    if (!input.success) throw new MoneyRuleError(input.error.issues[0].message);
+    await withUserTx(s.claims, (tx) => tx.insert(driverPlatformAccounts).values(input.data));
+    revalidatePath(`/app/drivers/${input.data.driverId}`);
+    return "Platform account added.";
+  });
+}
+
+export async function removePlatformAccountAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const obj = formObject(formData);
+  return guarded([A, O], async (s) => {
+    const input = z.object({ id: z.guid(), driverId: z.guid() }).parse(obj);
+    await withUserTx(s.claims, (tx) =>
+      tx.delete(driverPlatformAccounts).where(and(eq(driverPlatformAccounts.id, input.id), eq(driverPlatformAccounts.driverId, input.driverId))),
+    );
+    revalidatePath(`/app/drivers/${input.driverId}`);
+    return "Removed.";
   });
 }

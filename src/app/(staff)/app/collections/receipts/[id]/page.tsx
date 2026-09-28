@@ -106,6 +106,9 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
         <Button asChild variant="outline">
           <Link href={`/app/drivers/${d.id}`}>Driver</Link>
         </Button>
+        <Button asChild variant="outline">
+          <a href={`/app/collections/receipts/${p.id}/pdf`} target="_blank">PDF</a>
+        </Button>
         {hasAnyRole(session.roles, ["owner_admin", "finance"]) && !voided ? (
           <details className="w-full">
             <summary className="cursor-pointer text-sm text-destructive">Void this payment</summary>

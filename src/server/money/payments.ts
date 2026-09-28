@@ -151,7 +151,8 @@ export async function reverseEntry(
 
 /**
  * Manual adjustment (owner_admin/finance). Positive = driver owes more (due on `dueDate`),
- * negative = credit to the driver.
+ * negative = credit to the driver. `idempotencyKey` (e.g. `import:{batch}:{line}` for
+ * imported opening balances) makes a second posting of the same entry fail.
  */
 export async function postAdjustment(
   tx: Tx,
@@ -162,6 +163,8 @@ export async function postAdjustment(
     businessDate: IsoDate;
     dueDate?: IsoDate;
     type?: "adjustment" | "opening_balance";
+    idempotencyKey?: string;
+    memo?: string;
   },
 ): Promise<string> {
   if (input.amount === ZERO) throw new MoneyRuleError("Amount cannot be zero.");
@@ -179,7 +182,8 @@ export async function postAdjustment(
       businessDate: input.businessDate,
       dueDate: input.amount > ZERO ? (input.dueDate ?? input.businessDate) : null,
       reason: input.reason.trim(),
-      memo: input.type === "opening_balance" ? "Opening balance" : "Adjustment",
+      memo: input.memo ?? (input.type === "opening_balance" ? "Opening balance" : "Adjustment"),
+      idempotencyKey: input.idempotencyKey ?? null,
     })
     .returning({ id: ledgerEntries.id });
   return row.id;

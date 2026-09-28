@@ -25,7 +25,8 @@ npm run db:migrate     # apply ./drizzle migrations to DATABASE_URL
 Local DB tests: a Postgres 16 with user `postgres`/`postgres` and database `transrev_test`. `test/db/supabase-stub.sql` imitates Supabase's `auth` schema and roles.
 
 ## Layout
-- `src/app/(auth)`: login. `src/app/(staff)/app`: staff back office. `src/app/(portal)/portal`: driver/investor portal (mobile-first). Later phases add public routes: `/school`, `/apply`.
+- `src/app/(auth)`: login. `src/app/(staff)/app`: staff back office. `src/app/(portal)/portal`: driver/investor portal (mobile-first). `src/app/(public)`: public website (`/`, `/school`, `/privacy`, `/apply`); `/home` routes a signed-in user to their area.
+- Public pages have no DB role of their own (`anon` has no privileges): they read and write only through `src/server/public/*` with `withSystemTx`, with strict Zod validation, a honeypot and rate limiting.
 - `src/db/schema/*`: Drizzle tables. `drizzle/`: versioned migrations. Never edit an applied migration; add a new one.
 - `src/db/client.ts`: `withUserTx` and `withSystemTx` (see Security).
 - `src/lib/money.ts`, `src/lib/dates.ts`: the only way to handle money and business dates.
@@ -78,6 +79,6 @@ Business dates are `Asia/Manila` calendar dates (`IsoDate` "YYYY-MM-DD", Postgre
 4. ✅ RTO contracts (no interest, price ÷ term) and cashout, vehicle loan schedules (diminishing balance), per-vehicle profitability, finance alerts.
 5. ✅ Reminders: daily outbox, sent manually from staff phones (no SMS gateway yet), EN/Taglish templates, schedules, log, opt-outs. Provider interface kept for a future gateway.
 6. ✅ Expenses (budgets, recurring bills), payroll (semi-monthly, Labor Code defaults in settings, payslip PDF, register XLSX, cash advances, 13th month), commissions (referral 10% of down payment after 1 month; received), investor share (22 × daily boundary − driver's monthly RTO amortization).
-7. Applications, CRM, school landing page.
-8. Reports, business dashboard, exports.
-9. Spreadsheet import, hardening, Playwright, deployment docs.
+7. ✅ Public website (landing, `/school`, `/privacy`, `/apply`), CRM (leads, stages, follow-ups, Lead Ads webhook), client applications (checklists, pipeline, fees, receipts), documentation role, vehicle papers.
+8. ✅ Cash book (`/app/cashbook`: accounts, routing, running balances, reconciliations), dashboards (business, collections, sales), 15 reports with Excel/PDF/CSV (`/app/reports`), investor statement PDF, nightly report email (off until configured). Read-heavy RLS policies evaluate the role check once per query (migration 0022).
+9. ✅ Spreadsheet import (`/app/import`, 9 kinds, preview, batches, legacy payments), demo seed (`npm run db:seed:demo`), hardening (headers, error pages, `/api/health`, admin bootstrap), Playwright (`npm run test:e2e`), `docs/DEPLOYMENT.md`.

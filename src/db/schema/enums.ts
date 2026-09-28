@@ -8,6 +8,7 @@ export const appRole = pgEnum("app_role", [
   "sales",
   "driver",
   "investor",
+  "documentation",
 ]);
 
 export const profileStatus = pgEnum("profile_status", ["active", "disabled"]);
@@ -81,3 +82,44 @@ export const payrollStatus = pgEnum("payroll_status", ["draft", "finalized", "pa
 export const caSettlementKind = pgEnum("ca_settlement_kind", ["liquidation", "payroll_deduction", "cash_return"]);
 export const commissionStatus = pgEnum("commission_status", ["pending", "approved", "paid", "void"]);
 export const investorPayoutStatus = pgEnum("investor_payout_status", ["draft", "paid"]);
+
+export const proofStatus = pgEnum("proof_status", ["pending", "approved", "rejected"]);
+
+/** Where a lead came from (spec 4.10). */
+export const leadSource = pgEnum("lead_source", [
+  "facebook_page",
+  "messenger",
+  "fb_lead_ad",
+  "landing_page",
+  "referral",
+  "walk_in",
+  "tiktok",
+  "other",
+]);
+/** TransRev service lines (landing page, CRM interest, application types). */
+export const serviceLine = pgEnum("service_line", ["franchise", "activation", "vehicle_program", "fleet", "investment", "school", "other"]);
+export const leadStageKind = pgEnum("lead_stage_kind", ["open", "won", "lost"]);
+export const contactMethod = pgEnum("contact_method", ["call", "sms", "messenger", "viber", "email"]);
+export const leadActivityKind = pgEnum("lead_activity_kind", [
+  "note",
+  "call",
+  "message",
+  "inquiry",
+  "stage_change",
+  "assignment",
+  "follow_up_done",
+  "converted",
+  "import",
+]);
+/** Sections of the public website that staff edit without a deploy. */
+export const siteSection = pgEnum("site_section", ["hero", "service", "audience", "step", "requirement", "program", "faq", "school", "privacy"]);
+
+/** Vehicle type (spec 4.2). `vehicles.is_ev` is derived from it. */
+export const powertrain = pgEnum("powertrain", ["ice", "ev", "hybrid"]);
+export const clientKind = pgEnum("client_kind", ["person", "company"]);
+/**
+ * What an application status means for reports: in progress, approved/activated,
+ * released/completed, on hold, or cancelled.
+ */
+export const applicationStatusKind = pgEnum("application_status_kind", ["open", "approved", "completed", "on_hold", "cancelled"]);
+export const commissionMode = pgEnum("commission_mode", ["fixed", "percent"]);

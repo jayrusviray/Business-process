@@ -3,7 +3,7 @@ import { TEST_DATABASE_URL } from "./setup";
 
 export const sql = postgres(TEST_DATABASE_URL, { max: 4, onnotice: () => {} });
 
-export type Role = "owner_admin" | "finance" | "operations" | "sales" | "driver" | "investor";
+export type Role = "owner_admin" | "finance" | "operations" | "sales" | "documentation" | "driver" | "investor";
 
 /** Creates an auth user (profile via trigger) and grants roles as a superuser. */
 export async function createUser(name: string, roles: Role[] = []): Promise<string> {

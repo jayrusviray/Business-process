@@ -12,7 +12,10 @@ type Vehicle = Partial<{
   model: string;
   year: number | null;
   color: string;
-  isEv: boolean;
+  powertrain: string;
+  conductionSticker: string;
+  orcrExpiresOn: string | null;
+  insuranceExpiresOn: string | null;
   region: string;
   platforms: string[];
   acquisitionCostCentavos: bigint | null;
@@ -70,9 +73,22 @@ export function VehicleForm({ action, vehicle = {}, submitLabel }: { action: (s:
           ))}
         </Select>
       </Field>
-      <label className="flex items-center gap-2 self-end pb-2 text-sm">
-        <input type="checkbox" name="isEv" defaultChecked={vehicle.isEv} className="size-4" /> Electric vehicle
-      </label>
+      <Field label="Type" htmlFor="powertrain">
+        <Select id="powertrain" name="powertrain" defaultValue={vehicle.powertrain ?? "ice"}>
+          <option value="ice">ICE (gasoline / diesel)</option>
+          <option value="ev">EV (electric)</option>
+          <option value="hybrid">Hybrid</option>
+        </Select>
+      </Field>
+      <Field label="Conduction sticker" htmlFor="conductionSticker">
+        <Input id="conductionSticker" name="conductionSticker" defaultValue={vehicle.conductionSticker} />
+      </Field>
+      <Field label="OR/CR expires" htmlFor="orcrExpiresOn">
+        <Input id="orcrExpiresOn" name="orcrExpiresOn" type="date" defaultValue={vehicle.orcrExpiresOn ?? ""} />
+      </Field>
+      <Field label="Insurance expires" htmlFor="insuranceExpiresOn">
+        <Input id="insuranceExpiresOn" name="insuranceExpiresOn" type="date" defaultValue={vehicle.insuranceExpiresOn ?? ""} />
+      </Field>
       <Field label="Notes" htmlFor="notes" className="sm:col-span-3">
         <Textarea id="notes" name="notes" defaultValue={vehicle.notes} className="font-sans" />
       </Field>

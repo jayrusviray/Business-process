@@ -353,3 +353,87 @@ The owner asked (2026-09-27) to use **Philippine Labor Code defaults, with every
 - **Record corrections:** expenses, cash advances and commissions received can only be voided, never edited or deleted.
 - **Self-service views:** staff linked to a login see their own finalized payslips on the dashboard. Investors see their vehicles and monthly shares in the portal.
 - **Commissions received** (from platforms or dealers) are recorded one by one, since what platforms and dealers pay for isn't specified yet.
+
+## 14. Spec gap closing (M-A)
+
+These are items from the full spec (`/mvp` brief, 2026-09-27) that phases 1–6 didn't cover:
+
+- **Payment proofs from the portal.** A driver uploads a GCash, Maya or bank screenshot with the amount, reference number and date paid. Nothing is posted until finance verifies it.
+  - Finance splits the amount across the driver's accounts. The split must equal the claimed amount; if the amount is wrong, finance rejects the proof with a reason the driver sees.
+  - Approval records a normal payment dated the day the driver paid, with the proof as the attached receipt. The proof id is the payment's idempotency key.
+  - Operations can see the queue but can't decide. A driver can have at most `portal.max_pending_proofs` proofs waiting.
+- **Acknowledgement receipt PDF.** For staff at `/app/collections/receipts/[id]/pdf`, and for drivers from the portal (their own only, enforced by RLS).
+- **Collect today (collector mode).** A mobile list of every driver with anything due up to today, oldest arrears first, with one tap to record a payment.
+- **Close the day.** Shows boundary charged vs collected, then per collector: cash, non-cash, remitted and not yet remitted.
+  - Finance's close stores an immutable snapshot of that day.
+  - Payments changed after the close are flagged against the snapshot, not blocked. We didn't invent a rule to lock a closed day.
+- **Vehicle maintenance log.** Records the date, work done, shop, odometer, cost and a receipt photo.
+  - Optionally books a "Vehicle maintenance" expense (owner/admin and finance only), and optionally charges the driver at cost (owner rule).
+  - Voiding the record voids the expense and reverses the charge together.
+- **Driver platform accounts.** For example, inDrive IDs. They are unique per platform, and drivers see their own.
+- **Driver alerts on the dashboard.** Triggered by N unpaid boundary days, a balance at or over a threshold, or a licence expiring soon.
+  - Because payments apply oldest first, the unpaid boundary days are always the most recent ones, so their count is the run of consecutive unpaid days.
+- **Reminder quiet hours.** "Open SMS" is disabled between 21:00 and 07:00 Manila time (setting `reminders.quiet_hours`).
+- **Upload size.** Server actions now accept up to 9 MB. The default 1 MB rejected normal phone photos of receipts.
+
+## 15. Public website and CRM (M-B)
+
+- **Website at `/`.** The staff app stays at `/app`, and after sign-in users go to `/home`, which sends them to their own area.
+  - Pages: the landing page, `/school` (a placeholder until the owner has details) and `/privacy`.
+  - Content is edited under **Growth → Website** by owner/admin and sales. Visitors see changes on their next page load, because the content cache is refreshed on save.
+  - Brand colours live in one file, `src/app/brand.css`.
+  - The site has search and sharing metadata (title, description, Open Graph with a generated share image, `robots.txt`, `sitemap.xml`, JSON-LD) and is set to be indexed. The staff app stays out of search engines.
+- **Inquiry form.** Consent to the privacy notice (RA 10173) is required. Two spam controls:
+  - A hidden honeypot field: a submission that fills it in is silently dropped.
+  - A rate limit per visitor (`crm.inquiry_rate_limit_per_hour`, default 5). Visitor IPs are stored only as a salted hash.
+- **Leads from the form.** A submission becomes a lead with source "website form". If the same mobile number already has an open lead, the inquiry is added to that lead's timeline instead of creating a duplicate.
+- **Assignment.** New website and Lead Ads leads go to the active sales agent with the fewest open leads. With no agents, owner/admins and sales are notified instead.
+- **Notifications** are in-app (the bell in the header). SMS and email notifications wait for a provider.
+- **CRM.**
+  - A board with one column per configurable stage. Cards move with a stage picker (no drag-and-drop), so it works on phones.
+  - Follow-ups per agent, with overdue highlighting.
+  - Duplicate warning by mobile number on manual entry.
+  - CSV import with a preview. Rows matching an open lead are added to that lead.
+  - Losing a lead requires a reason. Moving it to a "won" stage records the conversion time.
+- **Personal data.** Leads carry no generic audit trail. Instead:
+  - Every stage and assignment change is written to the lead's timeline by the database.
+  - Owner/admin can export a lead's data as JSON, or erase the lead with its timeline, follow-ups and notifications.
+  - Only the fact of an export or erasure is kept, in `privacy_requests`.
+- **Facebook Lead Ads.** A webhook at `/api/webhooks/meta` checks Meta's signature and stores each submission once, keyed on its leadgen id.
+  - It is off until `crm.meta_lead_ads_enabled` is on and `META_APP_SECRET`, `META_VERIFY_TOKEN` and `META_PAGE_ACCESS_TOKEN` are set.
+  - It also needs Meta app review for `leads_retrieval`.
+  - Messenger leads are entered by hand (owner, round 2).
+- **Staff directory.** `app.staff_directory()` lets staff see other active staff and their roles, which drop-downs need. `user_roles` itself stays private.
+  - This also fixes an earlier limit: the "Received by" list on the payment form only ever showed the signed-in user to anyone but owner/admin.
+
+## 16. Client applications (M-C)
+
+- **New role: documentation staff.** They work applications and checklists and count as staff. They see no leads and no money screens beyond an application's own fees.
+  - Because this role was added to the database's list of roles in the same migration run that uses it, the SQL role checks for it compare roles as text (`app.has_any_role_text`).
+- **Configurable by owner/admin** under Applications → Settings:
+  - Application types, each with a default quoted fee (seeded ₱0).
+  - The status pipeline. Each status has a kind (in progress, approved, completed, on hold, cancelled), and reports count by kind.
+  - Document checklists per type. The seeded lists are generic placeholders.
+  - Referral commission rules per type, fixed or a percentage of the fees. None are active until the owner sets them.
+- **An application** belongs to a client (a person or company, reused by mobile number). It gets a copy of its type's checklist and a quoted "Service fee" line.
+  - Every status change is written to a history log by the database, with an optional note. Cancelling needs a reason.
+  - The first approval time and the completion time are stamped once.
+- **Checklist.** Documentation staff upload a file per item and verify it. A replacement file clears the earlier verification. An original seen at the office can be verified without a file.
+- **Fees and payments** follow the money rules: void-only, with idempotent payments. Receipts use the same AR-###### series as driver payments, with a PDF. Balance = active fees − active payments.
+- **Referral commission** is created once, when a referred application is first approved, from the type's rule. Amounts are fixed at creation, and finance approves and pays it on the Commissions page.
+- **Leads convert to applications** from the lead page. The client is reused by mobile number, and the lead moves to its "won" stage with a timeline entry.
+- **Approved driver-program applications** become driver profiles with status "applicant". If a driver already has the same mobile number, that driver is linked instead.
+- **Online applications at `/apply`** create a CRM lead (or add to the person's open lead), a client and a draft application, and notify documentation staff and owner/admins.
+  - The form uses the website's spam controls.
+  - No fees are quoted and no files can be uploaded publicly: documents are collected after staff make contact.
+- **Vehicle papers.**
+  - Vehicles now have a type (ICE, EV or Hybrid; `is_ev` is derived and existing EV flags were carried over), conduction sticker, OR/CR expiry and insurance expiry.
+  - Franchises can be linked to a client for renewal follow-up.
+  - Expiries within 60 days are listed, and those within 30 days (both settings) are shown as urgent: on the vehicle page, on the applications list (franchises), and on the dashboard (M-D).
+
+## 17. Cash book, dashboards and reports (M-D) and spreadsheet import (M-E)
+
+The full decision records are in `docs/notes-m-d.md` (which records count as cash in or out and in which account, how payroll and cash advances are treated, reconciliations, performance measurements) and `docs/notes-m-e.md` (import rules: never update existing records, idempotent opening balances, pre-go-live payments kept for reference only, date and peso parsing). Deployment and operations: `docs/DEPLOYMENT.md`. Open decisions for the owner: `docs/OPEN_QUESTIONS.md`.
+
+- Read-heavy RLS policies were rewritten (migration 0022) so the role check runs once per query instead of once per row. Same rules, and the RLS tests are unchanged; this is what brings dashboards under 2 seconds at 500 drivers × 3 years.
+- Open dues and aging use `app.open_charges()`, which applies the same oldest-due-first rule as `v_charge_status` (a DB test compares them) but walks each account once. The drivers list, Collect today, the alerts, the dashboards and the vehicle report use it.

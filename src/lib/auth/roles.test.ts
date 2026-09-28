@@ -22,7 +22,7 @@ describe("navigation", () => {
 
   it("sales never sees payroll, investor or settings screens", () => {
     const k = keys(["sales"]);
-    expect(k).toContain("/app/m/crm");
+    expect(k).toContain("/app/crm");
     expect(k.some((h) => /payroll|investors|admin/.test(h))).toBe(false);
   });
 

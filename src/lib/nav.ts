@@ -14,13 +14,14 @@ const A = "owner_admin" as const;
 const F = "finance" as const;
 const O = "operations" as const;
 const S = "sales" as const;
+const D = "documentation" as const;
 
 /**
  * Single source of truth for staff navigation. UI hiding is a convenience only:
  * every screen also checks roles server-side, and RLS is the real gate.
  */
 /** Highest build phase delivered so far; later modules show as placeholders. */
-export const CURRENT_PHASE = 6;
+export const CURRENT_PHASE = 9;
 
 export const NAV: NavSection[] = [
   {
@@ -50,22 +51,23 @@ export const NAV: NavSection[] = [
       { href: "/app/investors", label: "Investors", roles: [A, F], phase: 6, description: "Investor revenue share computations, payouts and statements." },
       { href: "/app/expenses", label: "Expenses", roles: [A, F], phase: 6, description: "Operating expenses, recurring bills and budget vs actual." },
       { href: "/app/payroll", label: "Payroll", roles: [A, F], phase: 6, description: "Semi-monthly payroll, government deductions, 13th month and payslips." },
+      { href: "/app/cashbook", label: "Cash book", roles: [A, F], phase: 8, description: "Every inflow and outflow per account (cash, GCash, Maya, bank), running balances and monthly reconciliation." },
     ],
   },
   {
     title: "Growth",
     items: [
-      { href: "/app/m/crm", label: "Leads (CRM)", roles: [A, O, S], phase: 7, description: "Leads from Facebook, the school page and the application form." },
-      { href: "/app/m/applications", label: "Applications", roles: [A, O, S], phase: 7, description: "PA/CPC, platform activation and vehicle program applications." },
-      { href: "/app/m/school", label: "School page", roles: [A, S], phase: 7, description: "Edit the public school landing page and courses." },
+      { href: "/app/crm", label: "Leads (CRM)", roles: [A, O, S], phase: 7, description: "Leads from Facebook, Messenger, the website and walk-ins: pipeline and follow-ups." },
+      { href: "/app/applications", label: "Applications", roles: [A, O, S, D, F], phase: 7, description: "PA/CPC, platform activation, vehicle acquisition and driver program applications." },
+      { href: "/app/website", label: "Website", roles: [A, S], phase: 7, description: "Edit the public website: services, requirements, FAQs and the school page." },
       { href: "/app/reminders", label: "Reminders", roles: [A, F, O], phase: 5, description: "Daily reminder outbox (sent manually from your phone), templates, schedules and log." },
     ],
   },
   {
     title: "Insights",
     items: [
-      { href: "/app/m/reports", label: "Reports", roles: [A, F], phase: 8, description: "Collections, aging, profitability, payroll register and exports." },
-      { href: "/app/m/import", label: "Import", roles: [A], phase: 9, description: "Spreadsheet import with column mapping and dry run." },
+      { href: "/app/reports", label: "Reports", roles: [A, F, O, S, D], phase: 8, description: "Collections, aging, RTO, sales, CRM, expenses, payroll, commissions, investors, cash flow and vehicles. Excel, PDF and print." },
+      { href: "/app/import", label: "Import", roles: [A], phase: 9, description: "Bring in the old spreadsheets: vehicles, drivers, plans, contracts, opening balances and more, with a row-by-row preview." },
     ],
   },
   {
