@@ -30,8 +30,8 @@ export default async function CollectTodayPage({ searchParams }: PageProps<"/app
         SELECT driver_id, SUM(outstanding_centavos)::bigint AS due_now,
           SUM(outstanding_centavos) FILTER (WHERE due_date = ${today}::date)::bigint AS due_today,
           MIN(due_date) AS oldest
-        FROM public.v_charge_status
-        WHERE status <> 'paid' AND due_date <= ${today}::date
+        FROM app.open_charges(NULL)
+        WHERE due_date <= ${today}::date
         GROUP BY driver_id
       )
       SELECT d.id AS driver_id, d.first_name || ' ' || d.last_name AS name, d.phone,

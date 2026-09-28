@@ -430,3 +430,10 @@ These are items from the full spec (`/mvp` brief, 2026-09-27) that phases 1–6 
   - Vehicles now have a type (ICE, EV or Hybrid; `is_ev` is derived and existing EV flags were carried over), conduction sticker, OR/CR expiry and insurance expiry.
   - Franchises can be linked to a client for renewal follow-up.
   - Expiries within 60 days are listed, and those within 30 days (both settings) are shown as urgent: on the vehicle page, on the applications list (franchises), and on the dashboard (M-D).
+
+## 17. Cash book, dashboards and reports (M-D) and spreadsheet import (M-E)
+
+The full decision records are in `docs/notes-m-d.md` (which records count as cash in or out and in which account, how payroll and cash advances are treated, reconciliations, performance measurements) and `docs/notes-m-e.md` (import rules: never update existing records, idempotent opening balances, pre-go-live payments kept for reference only, date and peso parsing). Deployment and operations: `docs/DEPLOYMENT.md`. Open decisions for the owner: `docs/OPEN_QUESTIONS.md`.
+
+- Read-heavy RLS policies were rewritten (migration 0022) so the role check runs once per query instead of once per row. Same rules, and the RLS tests are unchanged; this is what brings dashboards under 2 seconds at 500 drivers × 3 years.
+- Open dues and aging use `app.open_charges()`, which applies the same oldest-due-first rule as `v_charge_status` (a DB test compares them) but walks each account once. The drivers list, Collect today, the alerts, the dashboards and the vehicle report use it.

@@ -10,6 +10,7 @@ import { createRemittance, recordPayment } from "@/server/money/payments";
 import { approveProof, rejectProof, submitProof } from "@/server/money/proofs";
 import { renderReceiptPdf } from "@/server/pdf/receipt";
 import { driverAlerts } from "@/server/queries/driver-alerts";
+import { listDrivers } from "@/server/queries/drivers";
 import { as, schema, withSystemTx, withUserTx } from "./app";
 import { createUser, expectDbError, sql } from "./helpers";
 
@@ -271,5 +272,9 @@ describe("driver alerts", () => {
     expect(byId.get(lazy)).toMatchObject({ unpaid_days: 3, balance: "210000" });
     expect(byId.get(expiring)?.license_expiry).toBe("2026-10-30");
     expect(byId.has(otherDriverId)).toBe(false);
+    // The drivers list shows the same balance and the oldest unpaid due date.
+    const list = await withUserTx(as(finance), (tx) => listDrivers(tx, { today: D("2026-10-08") }));
+    const row = list.find((r) => r.id === lazy);
+    expect(row).toMatchObject({ balance_centavos: "210000", oldest_unpaid_due: "2026-10-05" });
   });
 });
