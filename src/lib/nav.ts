@@ -65,7 +65,7 @@ export const NAV: NavSection[] = [
     title: "Insights",
     items: [
       { href: "/app/m/reports", label: "Reports", roles: [A, F], phase: 8, description: "Collections, aging, profitability, payroll register and exports." },
-      { href: "/app/m/import", label: "Import", roles: [A], phase: 9, description: "Spreadsheet import with column mapping and dry run." },
+      { href: "/app/import", label: "Import", roles: [A], phase: 9, description: "Bring in the old spreadsheets: vehicles, drivers, plans, contracts, opening balances and more, with a row-by-row preview." },
     ],
   },
   {

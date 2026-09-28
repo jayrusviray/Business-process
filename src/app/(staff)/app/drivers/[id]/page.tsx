@@ -33,6 +33,7 @@ import {
   updateDriver,
 } from "../actions";
 import { DriverForm, STATUS_VARIANT } from "../driver-form";
+import { LegacyPaymentsCard } from "./legacy-payments";
 
 export const metadata = { title: "Driver" };
 
@@ -526,6 +527,8 @@ export default async function DriverPage({ params, searchParams }: PageProps<"/a
           </tbody>
         </Table>
       </Card>
+
+      <LegacyPaymentsCard claims={session.claims} driverId={driver.id} />
 
       <details className="mb-6">
         <summary className="cursor-pointer text-sm font-medium">Edit driver details</summary>
