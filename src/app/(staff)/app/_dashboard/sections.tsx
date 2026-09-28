@@ -34,6 +34,9 @@ type P = { claims: JwtClaims; today: IsoDate };
 const loadReceivables = cache((claims: JwtClaims, today: IsoDate) => withUserTx(claims, (tx) => receivables(tx, today)));
 type R = P & { from: IsoDate; to: IsoDate };
 
+/** "2026-09" → "Sep 26" for chart ticks. */
+const monthLabel = (m: string) => `${new Date(`${m}-01T00:00:00Z`).toLocaleDateString("en-PH", { month: "short", timeZone: "UTC" })} ${m.slice(2, 4)}`;
+
 const SOURCE_LABEL: Record<string, string> = {
   facebook_page: "Facebook page", messenger: "Messenger", fb_lead_ad: "Facebook Lead Ad", landing_page: "Website form",
   referral: "Referral", walk_in: "Walk-in", tiktok: "TikTok", other: "Other",
@@ -186,7 +189,7 @@ export async function RevenueTrendSection({ claims, today }: P) {
         ariaLabel="Monthly revenue and expenses for the last 12 months"
         aName="Revenue"
         bName="Expenses"
-        data={rows.map((r) => ({ label: r.month.slice(2), a: chartPesos(r.revenue), b: chartPesos(r.expenses) }))}
+        data={rows.map((r) => ({ label: monthLabel(r.month), a: chartPesos(r.revenue), b: chartPesos(r.expenses) }))}
       />
       <DataTable columns={["Month", "Revenue", "Expenses"]} rows={rows.map((r) => [r.month, <Money key="r" value={r.revenue} />, <Money key="e" value={r.expenses} />])} />
     </Section>
