@@ -1,26 +1,47 @@
-# M-E notes (spreadsheet import, demo seed, Playwright, hardening, deployment docs)
+# M-E notes: spreadsheet import, demo data, Playwright, hardening, deployment
 
-## Status / what's left (paused 2026-09-28)
+## Status
+All five parts are done: import (with UI), sample files and an end-to-end import test, demo seed, hardening, and Playwright plus the deployment docs. Open questions are rows 19–26 in `docs/OPEN_QUESTIONS.md`.
 
-**Done (committed, all checks green: typecheck, lint, 200 unit tests, 119 DB tests):**
-- Schema `src/db/schema/imports.ts`: `import_batches` (append-only; unique `(kind, file_sha256)` so the same file imports once) and `legacy_payments` (reference-only, never touches the ledger).
-- Migrations `drizzle/0019_imports.sql` (generated) and `drizzle/0020_imports_security.sql` (RLS: batches owner_admin only; legacy payments readable by owner_admin/finance/operations, insert owner_admin; append-only + audit + stamp triggers; batch-kind check trigger).
-- Pure parsing `src/lib/imports/cells.ts` (Excel numbers without float noise, Excel serial dates incl. 1904 system, PH date formats, peso text incl. `P`/`PHP`/parentheses), `kinds.ts` (kinds in import order, column specs + aliases, header matching), `rows.ts` (row validators per kind, in-file duplicate checks). Unit tests: `cells.test.ts`, `rows.test.ts`.
-- File reader `src/server/imports/read.ts` (CSV with real line numbers + Windows-1252 fallback; .xlsx first sheet via exceljs; 5 MB / 2,000-row limits) + `read.test.ts`.
-- Service `src/server/imports/service.ts` (`runImport`: validate all rows → preview; commit only if every row is valid; per-kind planners for vehicles, drivers, boundary plans + vehicle assignment, RTO contracts, opening balances, legacy payments, employees, investors, leads via CRM). Opening balances use `entry_type 'opening_balance'` + idempotency key `import:{batch}:{line}`; an account that already has a non-reversed opening balance is refused.
-- Small backward-compatible hooks: `postAdjustment` gains optional `idempotencyKey`/`memo`; `createRtoContract` gains `openingCreditKey`; `importLeadsCsv` split into `importLeadRows` (reused by the wizard); `parseCsvLines`/`normalizeHeader` in `src/lib/csv.ts`.
-- CSV templates for every kind in `public/templates/` (a unit test checks their headers match the specs).
+## What was built
+- **Import tables** (`src/db/schema/imports.ts`; migrations `0019_imports.sql` and `0020_imports_security.sql`):
+  - `import_batches`: append-only; the same file (by SHA-256) can be imported once per kind; RLS owner_admin only.
+  - `legacy_payments`: reference only and append-only; readable by owner_admin, finance and operations.
+- **Parsing** (`src/lib/imports/*`, pure, unit-tested):
+  - Excel numbers without float noise, Excel serial dates (1900 and 1904 systems), PH date formats, and peso text (`P`, `PHP`, `₱`, parentheses).
+  - Header aliases per kind, and row validators that also catch duplicates inside a file.
+- **Reader** (`src/server/imports/read.ts`): CSV with real line numbers and a Windows-1252 fallback, or the first sheet of an .xlsx. Limits: 5 MB and 2,000 rows.
+- **Service** (`src/server/imports/service.ts`, `runImport`): previews every row, and commits in one transaction as the owner (RLS applies) only when there are no errors.
+- **Import screen** at `/app/import` (nav entry replaces `/app/m/import`): steps in order, templates, column help, preview then import, and batch history. The driver page gets a "Payments before go-live" card.
+- **Templates**: `public/templates/*.csv` and `*.xlsx` (the xlsx files have an Instructions sheet). `npm run import:files` regenerates the xlsx files and `docs/import-samples/02-drivers.xlsx`.
+- **Demo seed**: `src/server/demo/seed.ts` and `scripts/seed-demo.ts` (`npm run db:seed:demo -- --yes`).
+- **Hardening**:
+  - security headers and CSP in `next.config.ts`
+  - `error.tsx`, `not-found.tsx` and `global-error.tsx`, plus an error page inside the staff area
+  - `GET /api/health` (public)
+  - `scripts/bootstrap-admin.ts` (`npm run admin:bootstrap`)
+- **Playwright**: `playwright.config.ts`, `e2e/` and `npm run test:e2e`.
+- **Docs**: `docs/DEPLOYMENT.md`.
 
-**Not done yet (next session, in this order):**
-1. `docs/import-samples/*` sample files (one as .xlsx) + `test/db/imports.test.ts` (end-to-end import in order; balances = SUM(ledger); re-import refused; RLS on the new tables).
-2. UI `/app/import` (page, server action with preview/import, batch history) + replace `/app/m/import` in `src/lib/nav.ts`; "Payments before go-live" card on the driver page (`listLegacyPayments` exists).
-3. Demo seed (`src/server/demo/seed.ts`, `scripts/seed-demo.ts`, `npm run db:seed:demo -- --yes`) + `test/db/seed.test.ts`.
-4. Hardening: security headers in `next.config.ts`, `error.tsx`/`not-found.tsx`/`global-error.tsx`, `GET /api/health` (public in `src/proxy.ts`), `scripts/bootstrap-admin.ts`.
-5. Playwright (`playwright.config.ts`, `e2e/`, `npm run test:e2e`), `docs/DEPLOYMENT.md`, open questions in `docs/OPEN_QUESTIONS.md`.
-
-## Decisions / assumptions so far
-- Entity imports (vehicles by plate, drivers by mobile, employees by number, investors by name) **skip** existing records instead of updating them; the preview shows "already exists".
-- Boundary plans can't start before today (default start = date chosen on the form); opening balances and legacy payments use an as-of date ≤ today.
-- RTO "paid to date" = everything paid toward the vehicle before go-live, including the down payment; posted as one opening credit. `first_due_date` is required (not guessed).
-- Slashed dates are read month-first (PH/US Excel default) unless the first number is over 12.
-- Lead imports reuse the CRM logic unchanged, so they still notify agents per new lead (possible open question: silence bulk imports?).
+## Decisions and assumptions
+- **Existing records are skipped, never updated.** Vehicles are matched by plate (ignoring spaces and dashes), drivers by mobile, employees by number and investors by name. The preview says "already exists".
+- **One opening balance per account.** An account that already has a non-reversed opening balance is refused. This covers manual ones and the RTO paid-to-date credit, so a second file or amortization rows for contract drivers can't double-count. Several rows per account in one file are allowed (to keep the aging).
+- **Import keys.** Opening balances and RTO paid-to-date credits carry the idempotency key `import:{batch}:{line}`.
+  - Small, backward-compatible additions made this possible: `postAdjustment` gained `idempotencyKey`/`memo`, and `createRtoContract` gained `openingCreditKey`.
+  - The lead import was split into `importLeadRows`, which the import screen reuses. The CRM import behaves as before.
+- **Dates.** Plans can't start before today (the default start is the date chosen on the form). Opening balances and legacy payments use an as-of date that can't be in the future.
+- **RTO contracts.**
+  - "Paid to date" means everything paid toward the vehicle before go-live, including the down payment.
+  - `first_due_date` is required, not guessed.
+  - Installments due so far are posted by the existing `createRtoContract`, using the real import date as today.
+- **Leads** go through the CRM logic unchanged, so agents are notified per new lead (open question 25).
+- **Demo seed.**
+  - It runs as the system, one transaction per day, through the real services.
+  - It needs an existing staff user as collector; it never creates auth users.
+  - Its rows are marked `[demo]` in notes, and it refuses to run twice.
+  - It records a `charge_runs` row, so the daily job continues from the next day.
+- **CSP** uses no nonces (`'unsafe-inline'` scripts and styles), so pages don't all have to render dynamically. Playwright checks that no CSP violations or page errors occur.
+  - HSTS: no `preload`.
+  - Permissions-Policy blocks the camera, microphone, geolocation, payment and USB APIs. Receipt photos use the file input with `capture`, which still works.
+- **Shared test database.** The import and seed DB tests retire the employees and investor links they create in `afterAll`, because `office.test.ts` assumes it owns every active employee and investor vehicle.
+- **Turbopack build.** Turbopack refuses to build in a worktree whose `node_modules` is a symlink. For local e2e runs here, use `E2E_NEXT_BUILD_FLAGS=--webpack`. Normal checkouts are unaffected.
