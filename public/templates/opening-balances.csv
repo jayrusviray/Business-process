@@ -1,0 +1,4 @@
+mobile,driver_name,account,amount,due_date,contract_no,notes
+0917 123 4567,Juan Dela Cruz,boundary,"2,100.00",2026-09-25,,Unpaid boundary Sep 25-27
+0917 123 4567,Juan Dela Cruz,charges,"1,500.00",2026-09-15,,Change oil and tires
+0918 234 5678,Pedro Santos,boundary,-700.00,,,Paid one day in advance

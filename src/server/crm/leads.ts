@@ -199,9 +199,20 @@ export async function importLeadsCsv(tx: Tx, input: { csvText: string; commit: b
   } catch (e) {
     throw new MoneyRuleError(e instanceof Error ? e.message : "Could not read the CSV file.");
   }
-  if (parsed.rows.length === 0) throw new MoneyRuleError("The file has no rows.");
-  if (parsed.rows.length > 2000) throw new MoneyRuleError("Import at most 2,000 leads at a time.");
-  const rows: LeadImportResult["rows"] = validateLeadRows(parsed.rows);
+  return importLeadRows(tx, { rows: parsed.rows, commit: input.commit, assignTo: input.assignTo });
+}
+
+/**
+ * The lead import on already-parsed rows (objects keyed by normalised header), shared by
+ * the CSV import above and the spreadsheet import (CSV or Excel) under /app/import.
+ */
+export async function importLeadRows(
+  tx: Tx,
+  input: { rows: Record<string, string>[]; commit: boolean; assignTo: string | null; sourceLabel?: string },
+): Promise<LeadImportResult> {
+  if (input.rows.length === 0) throw new MoneyRuleError("The file has no rows.");
+  if (input.rows.length > 2000) throw new MoneyRuleError("Import at most 2,000 leads at a time.");
+  const rows: LeadImportResult["rows"] = validateLeadRows(input.rows);
   const seen = new Map<string, number>();
   for (const r of rows) {
     if (r.error || !r.e164) continue;
@@ -230,7 +241,7 @@ export async function importLeadsCsv(tx: Tx, input: { csvText: string; commit: b
     if (res.duplicate) merged++;
     else {
       created++;
-      await tx.insert(leadActivities).values({ leadId: res.leadId, kind: "import", body: `Imported from CSV (line ${r.line})` });
+      await tx.insert(leadActivities).values({ leadId: res.leadId, kind: "import", body: `Imported from ${input.sourceLabel ?? "CSV"} (line ${r.line})` });
     }
   }
   return { rows, created, merged, committed: true };

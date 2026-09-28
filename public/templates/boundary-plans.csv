@@ -1,0 +1,3 @@
+mobile,driver_name,plate_no,program,daily_rate,start_date,notes
+0917 123 4567,Juan Dela Cruz,NBC 1234,boundary,700.00,,Blank start date = the date chosen on the import screen
+0918 234 5678,Pedro Santos,NDX 5678,rto,650.00,,rto = boundary-hulog / rent-to-own
