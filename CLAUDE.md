@@ -81,4 +81,4 @@ Business dates are `Asia/Manila` calendar dates (`IsoDate` "YYYY-MM-DD", Postgre
 6. ✅ Expenses (budgets, recurring bills), payroll (semi-monthly, Labor Code defaults in settings, payslip PDF, register XLSX, cash advances, 13th month), commissions (referral 10% of down payment after 1 month; received), investor share (22 × daily boundary − driver's monthly RTO amortization).
 7. ✅ Public website (landing, `/school`, `/privacy`, `/apply`), CRM (leads, stages, follow-ups, Lead Ads webhook), client applications (checklists, pipeline, fees, receipts), documentation role, vehicle papers.
 8. Reports, business dashboard, exports.
-9. Spreadsheet import, hardening, Playwright, deployment docs.
+9. ✅ Spreadsheet import (`/app/import`, 9 kinds, preview, batches, legacy payments), demo seed (`npm run db:seed:demo`), hardening (headers, error pages, `/api/health`, admin bootstrap), Playwright (`npm run test:e2e`), `docs/DEPLOYMENT.md`.

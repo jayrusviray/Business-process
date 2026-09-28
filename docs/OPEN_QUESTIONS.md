@@ -42,3 +42,16 @@ The owner's answers win, and the spec items below were deliberately **not** buil
 - **Payment allocation.** The spec has one pool, paid oldest charge first. Owner: the collector splits each payment across boundary, amortization and charges. Oldest-first applies within each account.
 - **RTO frequency.** The spec allows daily, weekly or monthly. Owner: fixed monthly, no interest, 60 months.
 - **Driver login.** The spec uses an OTP by SMS. Owner: mobile number + password, because there is no SMS gateway yet.
+
+## Data migration (M-E)
+
+| # | Question | Default in use | Where |
+|---|---|---|---|
+| 22 | Go-live and cut-off dates: which day do the sheets stop, and which day does the system start charging? | Opening balances as of the date chosen on the import screen; plans start on go-live day (never in the past) | Import screen |
+| 23 | Please send the real spreadsheets (or a copy with a few rows). The import columns are a best guess from the spec. | Templates in `public/templates/` with common aliases | `src/lib/imports/kinds.ts` |
+| 24 | Opening balances: one amount per driver and account, or arrears by month (with due dates) so the aging report stays meaningful? | Both accepted; due date defaults to the as-of date | Import: opening balances |
+| 25 | RTO contracts signed before go-live: do the sheets have the total paid per contract (including the down payment)? | "Paid to date" posted as one opening credit | Import: RTO contracts |
+| 26 | Is each driver's mobile number unique? The import finds drivers by mobile. | Refused when two drivers share a number | Import |
+| 27 | How far back should old payments be imported? They are reference only and don't change balances. | Whatever the file has, up to the as-of date | Import: payments before go-live |
+| 28 | Old lead lists: should a bulk import notify the sales agents for every lead (as the CRM import does today)? | Yes (same as the CRM import) | CRM |
+| 29 | Slashed dates in the sheets: month first (9/27/2026) or day first (27/9/2026)? | Month first unless the first number is over 12 | `parseImportDate` |
