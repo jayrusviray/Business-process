@@ -6,8 +6,8 @@
  *   expenses, payroll, applications, leads, commissions, cash advances.
  *
  * NEVER run it against a real database: it DROPS the target's schemas.
- *   PERF_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/transrev_test_md_perf npx tsx scripts/perf-seed.ts
- * Then time the queries with scripts/perf-measure.ts.
+ *   PERF_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/transrev_test_md_perf npx tsx scripts/perf/seed.ts
+ * Then time the queries with scripts/perf/measure.perf.ts.
  *
  * Triggers are switched off while loading (session_replication_role = replica)
  * so the audit log doesn't double the volume; the data is generated consistent
@@ -18,7 +18,7 @@ import path from "node:path";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
-import { addDays, businessToday } from "../src/lib/dates";
+import { addDays, businessToday } from "../../src/lib/dates";
 
 const url = process.env.PERF_DATABASE_URL ?? "";
 if (!/\/[^/]*test[^/]*$/.test(url)) {
@@ -42,8 +42,8 @@ async function main() {
     await step("reset schemas", `
       DROP SCHEMA IF EXISTS drizzle CASCADE; DROP SCHEMA IF EXISTS app CASCADE;
       DROP SCHEMA IF EXISTS auth CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`);
-    await sql.unsafe(readFileSync(path.join(import.meta.dirname, "../test/db/supabase-stub.sql"), "utf8"));
-    await migrate(drizzle(sql), { migrationsFolder: path.join(import.meta.dirname, "../drizzle") });
+    await sql.unsafe(readFileSync(path.join(import.meta.dirname, "../../test/db/supabase-stub.sql"), "utf8"));
+    await migrate(drizzle(sql), { migrationsFolder: path.join(import.meta.dirname, "../../drizzle") });
     console.log("migrations applied");
 
     // Users (profiles via the auth trigger, so triggers stay on for this part).
