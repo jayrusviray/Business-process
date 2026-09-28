@@ -319,23 +319,23 @@ export async function seedDemo(runTx: RunTx, opts: { today: IsoDate }): Promise<
   // 4. CRM and applications.
   const crm = await runTx(async (tx) => {
     const LEADS: [string, string, "messenger" | "facebook_page" | "walk_in" | "referral" | "landing_page" | "tiktok", "franchise" | "activation" | "vehicle_program" | "investment" | "school", string][] = [
-      ["Rodel Pascual", "09195553001", "messenger", "franchise", "Asked about CPC renewal"],
-      ["Grace Villareal", "09195553002", "facebook_page", "vehicle_program", "Wants rent-to-own EV"],
-      ["Noel Santiago", "09195553003", "walk_in", "activation", "inDrive activation for his own car"],
-      ["Lorna Castillo", "09195553004", "referral", "investment", "Referred by Ramon Uy"],
-      ["Dennis Aquino", "09195553005", "tiktok", "school", "Driver school schedule?"],
-      ["Marites Ocampo", "09195553006", "landing_page", "franchise", "New PA for 2 units"],
-      ["Paolo Enriquez", "09195553007", "messenger", "vehicle_program", "Boundary unit available?"],
-      ["Jun Villamor", "09195553008", "facebook_page", "activation", "Platform onboarding"],
+      ["Rodel Pascual", "09195554001", "messenger", "franchise", "Asked about CPC renewal"],
+      ["Grace Villareal", "09195554002", "facebook_page", "vehicle_program", "Wants rent-to-own EV"],
+      ["Noel Santiago", "09195554003", "walk_in", "activation", "inDrive activation for his own car"],
+      ["Lorna Castillo", "09195554004", "referral", "investment", "Referred by Ramon Uy"],
+      ["Dennis Aquino", "09195554005", "tiktok", "school", "Driver school schedule?"],
+      ["Marites Ocampo", "09195554006", "landing_page", "franchise", "New PA for 2 units"],
+      ["Paolo Enriquez", "09195554007", "messenger", "vehicle_program", "Boundary unit available?"],
+      ["Jun Villamor", "09195554008", "facebook_page", "activation", "Platform onboarding"],
     ];
     for (const [name, mobile, source, interest, message] of LEADS) {
       await createLead(tx, { name, mobile, source, interest, message, location: "Metro Manila", notes: DEMO_MARK, assignedTo: people.sales });
     }
     const APPS: [string, string, string, string | null][] = [
-      ["Marites Ocampo", "09195553006", "ltfrb_pa_new", "requirements_pending"],
-      ["Rodel Pascual", "09195553001", "ltfrb_cpc_renewal", "filed"],
-      ["Noel Santiago", "09195553003", "platform_activation", "approved"],
-      ["Paolo Enriquez", "09195553007", "driver_program", null],
+      ["Marites Ocampo", "09195554006", "ltfrb_pa_new", "requirements_pending"],
+      ["Rodel Pascual", "09195554001", "ltfrb_cpc_renewal", "filed"],
+      ["Noel Santiago", "09195554003", "platform_activation", "approved"],
+      ["Paolo Enriquez", "09195554007", "driver_program", null],
     ];
     for (const [name, mobile, typeKey, status] of APPS) {
       const client = await findOrCreateClient(tx, { name, mobile, notes: DEMO_MARK });

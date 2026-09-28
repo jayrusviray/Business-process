@@ -204,7 +204,7 @@ describe("migration of the sample spreadsheets, end to end", () => {
       ["TR-002", "daily", "64500"],
       ["TR-003", "monthly", "1800000"],
     ]);
-    const [leads] = await sql`SELECT count(*)::int AS n FROM public.leads WHERE name IN ('Rodel Pascual', 'Grace Villareal', 'Noel Santiago', 'Lorna Castillo', 'Dennis Aquino')`;
+    const [leads] = await sql`SELECT count(*)::int AS n FROM public.leads WHERE mobile IN ('09195553001', '09195553002', '09195553003', '09195553005') OR email = 'lorna@example.com'`;
     expect(leads.n).toBe(5);
     const batches = await sql`SELECT kind, row_count FROM public.import_batches ORDER BY created_at`;
     expect(batches.map((b) => b.kind)).toEqual([
