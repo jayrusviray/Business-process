@@ -75,7 +75,7 @@ export async function PeriodSection({ claims, from, to }: R) {
   const s = await withUserTx(claims, (tx) => periodSummary(tx, from, to));
   return (
     <Section title="Period" description={`${from === to ? from : `${from} to ${to}`} · cash received and spent`}>
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
         <Stat label="Driver collections" value={<Money value={s.collections} />} />
         <Stat label="All revenue" value={<Money value={s.revenue} />} />
         <Stat label="Expenses" value={<Money value={s.expenses} />} sub="incl. payroll cost" />
@@ -92,13 +92,13 @@ export async function FleetSection({ claims, today }: P) {
   const [f, rto] = await Promise.all([withUserTx(claims, (tx) => fleetCounts(tx)), withUserTx(claims, (tx) => rtoSummary(tx, today))]);
   return (
     <Section title="Fleet and RTO">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
         <Stat label="Active (assigned)" value={f.active} />
         <Stat label="Idle" value={f.idle} />
         <Stat label="In maintenance" value={f.maintenance} />
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{f.total} units · EV {f.ev} · ICE {f.ice}{f.hybrid ? ` · hybrid ${f.hybrid}` : ""}</p>
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
         <Stat label="Active RTO contracts" value={rto.active} />
         <Stat label="Total receivable" value={<Money value={rto.receivable} />} sub="remaining principal" />
         <Stat label="In arrears" value={<Money value={rto.arrears} />} />

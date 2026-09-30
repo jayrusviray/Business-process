@@ -21,9 +21,9 @@ export function Section({ title, description, children, className }: { title: st
 /** Stat tile: label, value (the one loud thing), optional context line. */
 export function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
   return (
-    <div className="rounded-md border p-3">
+    <div className="min-w-0 rounded-md border p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-semibold">{value}</p>
+      <p className="mt-1 text-lg font-semibold leading-tight">{value}</p>
       {sub ? <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p> : null}
     </div>
   );
