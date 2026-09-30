@@ -108,7 +108,7 @@ async function DriverAlertCard({ claims, today }: { claims: JwtClaims; today: Is
               <Link className="underline" href={`/app/drivers/${r.driver_id}`}>{r.name}</Link>
               <span className="flex flex-wrap items-center gap-1">
                 {r.unpaid_days >= drv.unpaidDaysAt ? <Badge variant="destructive">{r.unpaid_days} days unpaid</Badge> : null}
-                {drv.balanceAt > BigInt(0) && BigInt(r.balance) >= drv.balanceAt ? <Badge variant="warning">balance <Money value={r.balance} /></Badge> : null}
+                {drv.balanceAt > BigInt(0) && BigInt(r.balance) >= drv.balanceAt ? <Badge variant="warning">balance&nbsp;<Money value={r.balance} /></Badge> : null}
                 {r.license_expiry && r.license_expiry <= addDays(today, drv.licenseDays) ? (
                   <Badge variant={r.license_expiry < today ? "destructive" : "warning"}>licence {r.license_expiry < today ? "expired" : "expires"} {r.license_expiry}</Badge>
                 ) : null}
